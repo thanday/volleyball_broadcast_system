@@ -379,14 +379,26 @@ function PublicPortal() {
                                 <div className="flex flex-col items-center justify-center w-full md:w-auto">
                                     {heroMatch.status === 'Live' ? (
                                         <>
-                                            <div className="bg-red-600 text-white text-xs font-black uppercase px-3 py-1 rounded-full mb-4 animate-pulse">In Progress</div>
-                                            <div className="flex items-center gap-6 md:gap-10">
-                                                <span className="text-6xl md:text-8xl font-black text-yellow-400 drop-shadow-lg">{heroMatch.teamA.sets}</span>
-                                                <span className="text-2xl font-bold text-slate-500 uppercase">VS</span>
-                                                <span className="text-6xl md:text-8xl font-black text-yellow-400 drop-shadow-lg">{heroMatch.teamB.sets}</span>
+                                            {/* UPDATED: Live Status + Set Number */}
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className="bg-red-600 text-white text-xs font-black uppercase px-3 py-1 rounded-full animate-pulse">Live</div>
+                                                <div className="bg-white/10 text-white text-xs font-black uppercase px-3 py-1 rounded-full">Set {heroMatch.setHistory?.length + 1 || 1}</div>
                                             </div>
-                                            <div className="mt-4 bg-black/30 px-6 py-2 rounded-xl text-lg font-mono font-bold border border-white/10">
-                                                 SET {heroMatch.setHistory?.length + 1 || 1} <span className="mx-2 text-slate-500">|</span> {heroMatch.teamA.score} - {heroMatch.teamB.score}
+
+                                            {/* UPDATED: Main Focus is now POINTS (Score), not Sets */}
+                                            <div className="flex items-center gap-6 md:gap-8">
+                                                <span className="text-7xl md:text-9xl font-black text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.3)] tabular-nums tracking-tighter">
+                                                    {heroMatch.teamA.score}
+                                                </span>
+                                                <span className="text-2xl font-bold text-slate-500 uppercase">-</span>
+                                                <span className="text-7xl md:text-9xl font-black text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.3)] tabular-nums tracking-tighter">
+                                                    {heroMatch.teamB.score}
+                                                </span>
+                                            </div>
+
+                                            {/* UPDATED: Sets display moved down */}
+                                            <div className="mt-4 bg-black/40 px-8 py-3 rounded-2xl text-2xl font-black text-yellow-400 border border-yellow-500/30 tracking-widest shadow-lg">
+                                                 SETS: {heroMatch.teamA.sets} - {heroMatch.teamB.sets}
                                             </div>
                                         </>
                                     ) : (
@@ -705,7 +717,8 @@ function Dashboard({ onControl, onOutput, onStadium, onManageTeams, onManageRefe
   
   const [isCreating, setIsCreating] = useState(false);
   const [tab, setTab] = useState('upcoming');
-  const [form, setForm] = useState({ date: '', time: '', league: 'League Name', logo: '', teamA: '', teamB: '' });
+  // UPDATED: Default League Name set to "WOMEN'S CAVA CUP", removed 'logo' from state
+  const [form, setForm] = useState({ date: '', time: '', league: "WOMEN'S CAVA CUP", teamA: '', teamB: '' });
   
   // Local Settings
   const [serverIp, setServerIp] = useState(() => window.localStorage.getItem('volleyball_server_url') || 'http://localhost:3001');
@@ -728,7 +741,7 @@ function Dashboard({ onControl, onOutput, onStadium, onManageTeams, onManageRefe
       const newMatch = {
           id: Date.now().toString(),
           leagueName: form.league,
-          tournamentLogo: form.logo,
+          tournamentLogo: '', // UPDATED: Empty by default, relies on static fallback
           date: form.date,
           time: form.time,
           status: 'Scheduled',
@@ -817,11 +830,11 @@ function Dashboard({ onControl, onOutput, onStadium, onManageTeams, onManageRefe
               <div className="bg-white p-6 rounded-xl shadow-lg border mb-8 animate-in slide-in-from-top-4">
                   <h2 className="text-xl font-bold mb-4">New Fixture</h2>
                   <form onSubmit={createMatch} className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
+                      {/* UPDATED GRID: Removed Logo column */}
+                      <div className="grid grid-cols-3 gap-4">
                           <div><label className="text-xs font-bold">Date</label><input required type="date" value={form.date} onChange={e=>setForm({...form, date:e.target.value})} className="w-full border p-2 rounded"/></div>
                           <div><label className="text-xs font-bold">Time (24h)</label><input required type="time" value={form.time} onChange={e=>setForm({...form, time:e.target.value})} className="w-full border p-2 rounded"/></div>
                           <div><label className="text-xs font-bold">League</label><input value={form.league} onChange={e=>setForm({...form, league:e.target.value})} className="w-full border p-2 rounded"/></div>
-                          <div><label className="text-xs font-bold">Logo</label><div className="flex gap-2">{form.logo && <img src={form.logo} className="h-8"/>}<input type="file" className="text-xs" onChange={e=>processFile(e.target.files[0], u=>setForm({...form, logo:u}), 100)}/></div></div>
                       </div>
                       <div className="grid grid-cols-2 gap-6">
                           <div className="bg-blue-50 p-4 rounded border border-blue-100"><label className="font-bold text-blue-900">Home Team</label><select required value={form.teamA} onChange={e=>setForm({...form, teamA:e.target.value})} className="w-full p-2 border rounded mt-1"><option value="">Select...</option>{teamList.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></div>
@@ -909,6 +922,44 @@ function ControlPanel({ matchId, onBack }) {
         
         updateMatch({ status: newStatus });
     };
+
+    // --- NEW: Timeout Auto-Off Logic ---
+    useEffect(() => {
+        if (!match) return;
+        
+        const checkTimeouts = () => {
+            const now = Date.now();
+            let updates = {};
+            let hasUpdates = false;
+
+            // Check Team A
+            if (match.teamA?.activeTimeout && match.teamA?.timeoutExpires && now > match.teamA.timeoutExpires) {
+                updates.teamA = { ...match.teamA, activeTimeout: false, timeoutExpires: null };
+                hasUpdates = true;
+            }
+            
+            // Check Team B
+            if (match.teamB?.activeTimeout && match.teamB?.timeoutExpires && now > match.teamB.timeoutExpires) {
+                updates.teamB = { ...match.teamB, ...updates.teamB, activeTimeout: false, timeoutExpires: null };
+                // Note: if teamA also updated, we need to merge carefully, but usually only one timeout happens at a time.
+                // If both expire exactly same second, we might lose one update if not careful.
+                // Safer merge:
+                if (updates.teamA) {
+                    updates.teamB = { ...match.teamB, activeTimeout: false, timeoutExpires: null };
+                } else {
+                    updates.teamB = { ...match.teamB, activeTimeout: false, timeoutExpires: null };
+                }
+                hasUpdates = true;
+            }
+
+            if (hasUpdates) {
+                updateMatch(updates);
+            }
+        };
+
+        const interval = setInterval(checkTimeouts, 1000);
+        return () => clearInterval(interval);
+    }, [match]); // Dependent on match state to check expiry
   
     const getLatestTeamData = (matchTeam) => {
         if (!matchTeam) return null;
@@ -933,6 +984,22 @@ function ControlPanel({ matchId, onBack }) {
         const updates = { [teamField]: { ...teamData, score: val } };
         if (delta > 0) updates.serving = teamField === 'teamA' ? 'A' : 'B';
         updateMatch(updates);
+    };
+
+    // --- NEW: Handle Timeout (Adds 30s Timer) ---
+    const handleTimeout = (teamField, delta) => {
+        const teamData = match[teamField];
+        const val = Math.max(0, (teamData.timeouts || 0) + delta);
+        
+        let updates = { timeouts: val };
+        
+        // If adding a timeout, automatically trigger alert for 30 seconds
+        if (delta > 0) {
+            updates.activeTimeout = true;
+            updates.timeoutExpires = Date.now() + 30000;
+        }
+
+        updateMatch({ [teamField]: { ...teamData, ...updates } });
     };
   
     const finishSet = () => {
@@ -987,24 +1054,63 @@ function ControlPanel({ matchId, onBack }) {
                 <button onClick={()=>setTab('sponsors')} className={`px-4 py-2 rounded font-bold ${tab==='sponsors'?'bg-blue-600 text-white':'bg-white'}`}>Sponsors</button>
             </div>
   
-            <div className="flex-1 overflow-hidden flex gap-6 p-4 pt-0">
+            <div className="flex-1 overflow-hidden flex gap-4 p-4 pt-0">
                 {tab === 'score' && (
                     <>
-                      <div className="flex-1 overflow-y-auto space-y-6">
-                          <div className="grid grid-cols-2 gap-6">
-                              <TeamController name={left.name} data={match[leftId]} serving={match.serving === (match.isSwapped ? 'B':'A')} onScore={d=>handleScore(leftId, d)} onSet={d=>updateMatch({[leftId]:{...match[leftId], sets: Math.max(0,match[leftId].sets+d)}})} onColor={c=>updateMatch({[leftId]:{...match[leftId], color:c}})} onTimeout={d=>updateMatch({[leftId]:{...match[leftId], timeouts: Math.max(0,match[leftId].timeouts+d)}})} onServe={()=>updateMatch({serving: leftId==='teamA'?'A':'B'})} onAlert={()=>updateMatch({[leftId]:{...match[leftId], activeTimeout: !match[leftId].activeTimeout}})} />
-                              <TeamController name={right.name} data={match[rightId]} serving={match.serving === (match.isSwapped ? 'A':'B')} onScore={d=>handleScore(rightId, d)} onSet={d=>updateMatch({[rightId]:{...match[rightId], sets: Math.max(0,match[rightId].sets+d)}})} onColor={c=>updateMatch({[rightId]:{...match[rightId], color:c}})} onTimeout={d=>updateMatch({[rightId]:{...match[rightId], timeouts: Math.max(0,match[rightId].timeouts+d)}})} onServe={()=>updateMatch({serving: rightId==='teamA'?'A':'B'})} onAlert={()=>updateMatch({[rightId]:{...match[rightId], activeTimeout: !match[rightId].activeTimeout}})} />
-                          </div>
-                          <div className="flex gap-4">
-                              <button onClick={finishSet} className="flex-1 py-4 bg-blue-600 text-white rounded-xl font-bold shadow-lg flex justify-center gap-2"><CheckCircle/> Finish Set</button>
-                              <button onClick={()=>updateMatch({isSwapped: !match.isSwapped})} className="px-8 py-4 bg-amber-100 text-amber-900 rounded-xl font-bold flex gap-2"><ArrowLeftRight/> Swap</button>
+                      {/* Left Side Player List */}
+                      <div className="w-64 bg-white rounded-xl border flex flex-col overflow-hidden shadow-sm">
+                          <div className="p-3 bg-slate-50 font-bold text-xs uppercase text-slate-500 border-b text-center border-t-4" style={{borderColor: left.color}}>{left.name}<br/><span className="text-[10px] opacity-70">Active Player Overlay</span></div>
+                          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                              {(left.roster || []).map(p => (
+                                  <button key={p.id} onClick={()=>updateMatch({activePlayerId: match.activePlayerId===p.id?null:p.id, activeText: `#${p.number} ${p.name}`})} className={`w-full text-left p-2 rounded flex items-center gap-2 transition-all ${match.activePlayerId===p.id?'bg-yellow-100 border border-yellow-400 shadow-sm':'hover:bg-slate-50 border border-transparent'}`}>
+                                      <span className="font-mono font-bold text-slate-500 w-6 bg-white rounded text-center border">{p.number}</span>
+                                      <span className="truncate flex-1 text-xs font-bold text-slate-700">{p.name}</span>
+                                  </button>
+                              ))}
                           </div>
                       </div>
-                      <div className="w-80 bg-white rounded-xl border flex flex-col overflow-hidden">
-                          <div className="p-3 bg-slate-50 font-bold text-xs uppercase text-slate-500 border-b">Active Player Overlay</div>
-                          <div className="flex-1 overflow-y-auto p-2 space-y-4">
-                              {[currentTeamA, currentTeamB].map((t, i) => (
-                                  <div key={i}><div className="text-xs font-bold mb-1 px-2 text-slate-400">{t.name}</div><div className="space-y-1">{(t.roster || []).map(p => <button key={p.id} onClick={()=>updateMatch({activePlayerId: match.activePlayerId===p.id?null:p.id, activeText: `#${p.number} ${p.name}`})} className={`w-full text-left p-2 rounded flex items-center gap-2 ${match.activePlayerId===p.id?'bg-yellow-100 border border-yellow-400':'hover:bg-slate-50 border border-transparent'}`}><span className="font-mono font-bold text-slate-500 w-6">{p.number}</span><span className="truncate flex-1 text-sm font-bold text-slate-700">{p.name}</span></button>)}</div></div>
+
+                      {/* Center Controls */}
+                      <div className="flex-1 overflow-y-auto space-y-6">
+                          <div className="grid grid-cols-2 gap-4">
+                              <TeamController 
+                                name={left.name} 
+                                data={match[leftId]} 
+                                serving={match.serving === (match.isSwapped ? 'B':'A')} 
+                                onScore={d=>handleScore(leftId, d)} 
+                                onSet={d=>updateMatch({[leftId]:{...match[leftId], sets: Math.max(0,match[leftId].sets+d)}})} 
+                                onColor={c=>updateMatch({[leftId]:{...match[leftId], color:c}})} 
+                                onTimeout={d=>handleTimeout(leftId, d)} 
+                                onServe={()=>updateMatch({serving: leftId==='teamA'?'A':'B'})} 
+                                onAlert={()=>updateMatch({[leftId]:{...match[leftId], activeTimeout: !match[leftId].activeTimeout, timeoutExpires: null}})} 
+                              />
+                              <TeamController 
+                                name={right.name} 
+                                data={match[rightId]} 
+                                serving={match.serving === (match.isSwapped ? 'A':'B')} 
+                                onScore={d=>handleScore(rightId, d)} 
+                                onSet={d=>updateMatch({[rightId]:{...match[rightId], sets: Math.max(0,match[rightId].sets+d)}})} 
+                                onColor={c=>updateMatch({[rightId]:{...match[rightId], color:c}})} 
+                                onTimeout={d=>handleTimeout(rightId, d)} 
+                                onServe={()=>updateMatch({serving: rightId==='teamA'?'A':'B'})} 
+                                onAlert={()=>updateMatch({[rightId]:{...match[rightId], activeTimeout: !match[rightId].activeTimeout, timeoutExpires: null}})} 
+                              />
+                          </div>
+                          <div className="flex gap-4">
+                              <button onClick={finishSet} className="flex-1 py-4 bg-blue-600 text-white rounded-xl font-bold shadow-lg flex justify-center gap-2 hover:bg-blue-700 active:scale-95 transition-all"><CheckCircle/> Finish Set</button>
+                              <button onClick={()=>updateMatch({isSwapped: !match.isSwapped})} className="px-8 py-4 bg-amber-100 text-amber-900 rounded-xl font-bold flex gap-2 hover:bg-amber-200 active:scale-95 transition-all"><ArrowLeftRight/> Swap</button>
+                          </div>
+                      </div>
+
+                      {/* Right Side Player List */}
+                      <div className="w-64 bg-white rounded-xl border flex flex-col overflow-hidden shadow-sm">
+                          <div className="p-3 bg-slate-50 font-bold text-xs uppercase text-slate-500 border-b text-center border-t-4" style={{borderColor: right.color}}>{right.name}<br/><span className="text-[10px] opacity-70">Active Player Overlay</span></div>
+                          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                              {(right.roster || []).map(p => (
+                                  <button key={p.id} onClick={()=>updateMatch({activePlayerId: match.activePlayerId===p.id?null:p.id, activeText: `#${p.number} ${p.name}`})} className={`w-full text-left p-2 rounded flex items-center gap-2 transition-all ${match.activePlayerId===p.id?'bg-yellow-100 border border-yellow-400 shadow-sm':'hover:bg-slate-50 border border-transparent'}`}>
+                                      <span className="font-mono font-bold text-slate-500 w-6 bg-white rounded text-center border">{p.number}</span>
+                                      <span className="truncate flex-1 text-xs font-bold text-slate-700">{p.name}</span>
+                                  </button>
                               ))}
                           </div>
                       </div>
@@ -1159,6 +1265,370 @@ function TeamController({ name, data, serving, onScore, onSet, onColor, onTimeou
             </div>
         </div>
     )
+}
+
+// --- Broadcast Overlay ---
+function BroadcastOverlay({ matchId }) {
+  const [matches] = useSyncedState('volleyball_matches', []);
+  const [teams] = useSyncedState('volleyball_teams', []); 
+  const matchList = Array.isArray(matches) ? matches : [];
+  const match = matchList.find(m => m.id === matchId);
+  const [introMode, setIntroMode] = useState(true);
+  const [sponsorIdx, setSponsorIdx] = useState(0);
+
+  const getLatestTeamData = (matchTeam) => {
+      if (!matchTeam) return null;
+      const latest = (teams || []).find(t => t.id === matchTeam.id);
+      if (!latest) return matchTeam;
+      return {
+          ...matchTeam,
+          name: latest.name,
+          country: latest.country,
+          logo: latest.logo,
+          flag: latest.flag,
+          roster: latest.roster
+      };
+  };
+
+  // Intro Sequence Effect
+  useEffect(() => {
+      if (match?.activeView === 'scoreboard' && match?.graphicsVisible) {
+          setIntroMode(true);
+          const timer = setTimeout(() => {
+              setIntroMode(false);
+          }, 4000); // 4 seconds intro
+          return () => clearTimeout(timer);
+      } else {
+          setIntroMode(false); 
+      }
+  }, [match?.activeView, match?.graphicsVisible]);
+
+  // Sponsor Rotation Effect 
+  useEffect(() => {
+    if (match?.showBroadcastSponsors && (match?.broadcastSponsors?.length || 0) > 1) {
+        const interval = setInterval(() => {
+            setSponsorIdx(prev => (prev + 1) % match.broadcastSponsors.length);
+        }, 5000); // Rotate every 5 seconds
+        return () => clearInterval(interval);
+    } else {
+        setSponsorIdx(0); // Reset index if not rotating or only 1
+    }
+  }, [match?.broadcastSponsors, match?.showBroadcastSponsors]);
+
+  if(!match || !match.teamA || !match.teamB) return <div className="text-white p-10">Waiting for data...</div>;
+
+  const currentTeamA = getLatestTeamData(match.teamA);
+  const currentTeamB = getLatestTeamData(match.teamB);
+
+  const show = match.graphicsVisible;
+  // Apply swap logic to the LATEST data
+  const left = match.isSwapped ? currentTeamB : currentTeamA;
+  const right = match.isSwapped ? currentTeamA : currentTeamB;
+  const sL = match.serveVisible && match.serving === (match.isSwapped?'B':'A');
+  const sR = match.serveVisible && match.serving === (match.isSwapped?'A':'B');
+
+  // Referee Data (Manual selection)
+  const currentRef = (match.activeReferee || 1) === 1 ? match.referee1 : match.referee2;
+  const refTitle = (match.activeReferee || 1) === 1 ? "1ST REFEREE" : "2ND REFEREE";
+
+  // Logic: Set/Match Point
+  const setNum = (match.teamA.sets||0) + (match.teamB.sets||0) + 1;
+  const limit = setNum===5 ? 15 : 25;
+  const getPointState = (s1, s2, sets) => {
+      if (s1 >= limit && s1 >= s2 + 2) return null;
+
+      if(s1 < limit-1 || s1 <= s2) return null;
+      if(sets===2 || setNum===5) return 'MATCH POINT';
+      return 'SET POINT';
+  }
+  const statusL = getPointState(left.score||0, right.score||0, left.sets||0);
+  const statusR = getPointState(right.score||0, left.score||0, right.sets||0);
+
+  const allPlayers = [...(currentTeamA?.roster || []), ...(currentTeamB?.roster || [])];
+  const activeP = allPlayers.find(p => p.id === match.activePlayerId);
+  
+  const isLeftPlayer = left.roster?.find(p => p.id === match.activePlayerId);
+  const isRightPlayer = right.roster?.find(p => p.id === match.activePlayerId);
+  const getTopLabel = (isTimeout, status) => {
+      if (isTimeout) {
+          return { text: "TIMEOUT", className: "animate-flash-timeout bg-[#dc2626]" };
+      } else if (status) {
+          return { text: status, className: "bg-[#2F36CF]" };
+      }
+      return null;
+  };
+
+  const topLabelL = getTopLabel(left.activeTimeout, statusL);
+  const topLabelR = getTopLabel(right.activeTimeout, statusR);
+
+  // --- Summary Helper ---
+  const history = match.setHistory || [];
+  const getSetScore = (teamSide, setIndex) => {
+      const set = history.find(h => h.set === setIndex);
+      if (!set) return "";
+      const isTeamA = teamSide.id === match.teamA.id;
+      return isTeamA ? set.scoreA : set.scoreB;
+  };
+
+  return (
+      <div className="w-[1920px] h-[1080px] relative overflow-hidden font-sans bg-transparent">
+          
+          {/* --- MATCH SUMMARY (TOP LEFT) --- */}
+          {show && match.activeView === 'summary' && (
+              <div className="absolute top-10 left-10 z-50 animate-in slide-in-from-left-4 fade-in duration-500">
+                  <div className="flex flex-col shadow-2xl border-2 border-white/20 rounded-xl overflow-hidden bg-slate-900/90 backdrop-blur">
+                      <div className="bg-[#2F36CF] w-full h-16 flex justify-start items-center border-b border-white/10">
+                          <img src="/img/ledlogo.png" className="h-full w-auto object-contain" onError={(e) => e.target.style.display='none'}/>
+                      </div>
+
+                      {/* Column Headers */}
+                      <div className="flex bg-slate-800 border-b border-white/10 text-xs font-bold text-slate-400">
+                           <div className="w-[180px] p-2 pl-4">TEAMS</div> 
+                           <div className="w-16 flex items-center justify-center border-l border-white/10">TOTAL</div>
+                           {[1,2,3,4,5].map(i => (
+                               <div key={i} className="w-16 flex items-center justify-center border-l border-white/10">SET {i}</div>
+                           ))}
+                      </div>
+                      
+                      {/* Table Row 1 (Left Team) */}
+                      <div className="flex h-16 border-b border-white/10 bg-white">
+                           {/* Team Name + Flag */}
+                           <div style={{backgroundColor: left.color}} className="w-[180px] flex items-center justify-between px-4 relative overflow-hidden">
+                               <span className="text-2xl font-black text-white uppercase relative z-10 drop-shadow-md truncate" style={{ color: getTextColor(left.color) }}>{left.country}</span>
+                               {left.flag && <img src={left.flag} className="h-8 w-12 object-cover border border-white/20 shadow-sm z-10 ml-2" />}
+                               <div className="absolute inset-0 bg-gradient-to-r from-black/20 to-transparent"></div>
+                           </div>
+                           {/* Total Sets */}
+                           <div className="w-16 bg-[#2F36CF] flex items-center justify-center text-white border-x border-slate-200">
+                               <span className="text-4xl font-black leading-none">{left.sets}</span>
+                           </div>
+                           {/* Set Scores */}
+                           {[1,2,3,4,5].map(i => {
+                               const score = getSetScore(left, i);
+                               const opponentScore = getSetScore(right, i);
+                               const won = score > opponentScore && score !== "";
+                               return (
+                                   <div key={i} className="w-16 flex items-center justify-center border-r border-slate-200 last:border-0 bg-white">
+                                       <span className={`text-2xl font-bold ${won ? 'text-black font-black' : 'text-slate-400'}`}>{score}</span>
+                                   </div>
+                               )
+                           })}
+                      </div>
+
+                      {/* Table Row 2 (Right Team) */}
+                      <div className="flex h-16 bg-white">
+                           {/* Team Name + Flag */}
+                           <div style={{backgroundColor: right.color}} className="w-[180px] flex items-center justify-between px-4 relative overflow-hidden">
+                               <span className="text-2xl font-black text-white uppercase relative z-10 drop-shadow-md truncate" style={{ color: getTextColor(right.color) }}>{right.country}</span>
+                                {right.flag && <img src={right.flag} className="h-8 w-12 object-cover border border-white/20 shadow-sm z-10 ml-2" />}
+                               <div className="absolute inset-0 bg-gradient-to-r from-black/20 to-transparent"></div>
+                           </div>
+                           {/* Total Sets */}
+                           <div className="w-16 bg-[#2F36CF] flex items-center justify-center text-white border-x border-slate-200">
+                               <span className="text-4xl font-black leading-none">{right.sets}</span>
+                           </div>
+                           {/* Set Scores */}
+                           {[1,2,3,4,5].map(i => {
+                               const score = getSetScore(right, i);
+                               const opponentScore = getSetScore(left, i);
+                               const won = score > opponentScore && score !== "";
+                               return (
+                                   <div key={i} className="w-16 flex items-center justify-center border-r border-slate-200 last:border-0 bg-white">
+                                       <span className={`text-2xl font-bold ${won ? 'text-black font-black' : 'text-slate-400'}`}>{score}</span>
+                                   </div>
+                               )
+                           })}
+                      </div>
+                  </div>
+              </div>
+          )}
+
+          {/* --- REFEREE LOWER THIRD (CENTER BOTTOM) --- */}
+          <div className={`absolute bottom-20 left-1/2 -translate-x-1/2 flex items-center justify-center transition-all duration-700 z-50 ${show && match.activeView==='referees' ? 'translate-y-0 opacity-100' : 'translate-y-48 opacity-0'}`}>
+              <div className="flex items-center shadow-2xl">
+                  {/* Left Label Box */}
+                  <div className="w-[200px] h-24 bg-[#2F36CF] text-white flex items-center justify-center border-r-2 border-black/10">
+                      <span className="font-black text-xl uppercase tracking-wider">{refTitle}</span>
+                  </div>
+                  {/* Right Content Box */}
+                  <div className="w-[600px] h-24 bg-white flex flex-col items-start justify-center px-8 relative overflow-hidden">
+                      <div className="absolute bottom-0 left-0 w-full h-2 bg-[#2F36CF]"></div>
+
+                      <div key={match.activeReferee || 1} className="animate-in slide-in-from-bottom-4 fade-in duration-500">
+                          <div className="text-4xl font-black text-slate-900 uppercase leading-none mb-1">
+                              {currentRef?.name || "Official"}
+                          </div>
+                          <div className="text-lg font-bold text-slate-500 uppercase tracking-widest">
+                              {currentRef?.country || ""}
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+
+          {/* Main Scoreboard Container */}
+
+          <div className={`absolute bottom-20 left-1/2 -translate-x-1/2 flex items-center justify-center transition-all duration-700 z-40 ${show && (match.activeView==='scoreboard' || match.activeView==='full_time') ? 'translate-y-0 opacity-100' : 'translate-y-48 opacity-0'}`}>
+
+             <div className="relative flex items-center">
+
+                 {(() => {
+                     const isFullTime = match.activeView === 'full_time';
+                     
+                     return (
+                         <>
+                             {/* --- PLAYER OVERLAY (LEFT)*/}
+                             <div className={`absolute left-0 bottom-full h-24 flex items-center mb-0 transition-all duration-700 ease-in-out z-[100] overflow-hidden ${isLeftPlayer && !isFullTime ? 'w-[356px] opacity-100' : 'w-0 opacity-0'}`}>
+                                {activeP && isLeftPlayer && (
+                                    <div className="w-[356px] h-24 bg-[#2F36CF] text-white flex items-center relative px-6 border-r-2 border-white/10 shadow-xl">
+                                         <div className="flex-1 flex items-center justify-between gap-4">
+                                             <span className="text-5xl font-black text-white">{activeP.number}</span>
+                                             <div className="text-right overflow-hidden">
+                                                 <div className="text-xl font-bold uppercase leading-tight whitespace-nowrap truncate">{activeP.name}</div>
+                                                 <div className="text-sm text-white/70 font-bold uppercase tracking-widest">{activeP.position}</div>
+                                             </div>
+                                         </div>
+                                    </div>
+                                )}
+                             </div>
+
+                             {/* LEFT SIDE GROUP */}
+                             <div className="flex items-center z-10 relative">
+                                 {topLabelL && !introMode && !isLeftPlayer && !isFullTime && (
+                                      <div className={`absolute -top-8 left-0 h-8 flex items-center justify-center text-white text-sm font-black tracking-wider uppercase z-30 transition-all duration-300 w-[356px] shadow-lg ${topLabelL.className}`}>
+                                          {topLabelL.text}
+                                      </div>
+                                 )}
+
+                                 {/* Name Bar (Outer) */}
+                                 <div style={{ backgroundColor: left.color, width: isFullTime ? '550px' : (introMode ? '600px' : '260px') }} className="h-24 transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] flex items-center justify-center relative z-0 shadow-lg overflow-hidden">
+                                      <span className="font-black uppercase whitespace-nowrap transition-all duration-500 text-5xl" style={{ color: getTextColor(left.color) }}>
+                                          {/* Show Full Name in Full Time or Intro, otherwise Short Code */}
+                                          {(introMode || isFullTime) ? left.name : (left.country || left.name.substring(0,3))}
+                                      </span>
+                                      {/* Flag - Intro Only */}
+                                      <div className={`absolute left-0 top-0 bottom-0 w-full overflow-hidden flex items-center justify-center transition-opacity duration-500 ${(introMode || isFullTime) ? 'opacity-20' : 'opacity-0'}`}>
+                                           {left.flag && <img src={left.flag} className="w-full h-full object-cover"/>}
+                                      </div>
+                                      
+                                      <div className="absolute bottom-0 left-0 w-full h-2 bg-[#2F36CF] z-30"></div>
+                                 </div>
+                                 
+                                 {/* Sets Box (Middle) - UPDATED to Theme Blue */}
+                                 <div className={`h-24 bg-[#f05c22] text-white flex flex-col items-center justify-center border-r-2 border-black/10 z-10 overflow-hidden transition-all duration-1000 ${introMode ? 'w-0 opacity-0' : 'w-24 opacity-100'}`}>
+                                      <span className="text-[30px] font-bold uppercase leading-none mt-1 text-white/70">SETS</span>
+                                      <span className="text-5xl font-black leading-none">{left.sets}</span>
+
+                                      <div className="absolute bottom-0 left-0 w-full h-2 bg-[#2F36CF]"></div>
+
+                                 </div>
+
+                                 {/* Score Box (Inner) */}
+                                 <div className={`h-24 bg-white text-slate-900 flex items-center justify-center z-20 overflow-hidden transition-all duration-1000 relative ${introMode || isFullTime ? 'w-0 opacity-0' : 'w-32 opacity-100'}`}>
+                                      <span key={left.score} className="text-6xl font-black animate-score-pop">{left.score}</span>
+                                      <div className="absolute top-1 left-2 flex gap-1">{[...Array(left.timeouts)].map((_,i)=><div key={i} className="w-2 h-2 bg-red-500 rounded-full"/>)}</div>
+                                      {sL && <img src="/img/volleyball.png" className="w-5 absolute right-1 top-1 animate-spin-slow"/>}
+                                      
+                                      <div className="absolute bottom-0 left-0 w-full h-2 bg-[#2F36CF]"></div>
+                                 </div>
+                             </div>
+
+                             {/* CENTER LOGO (Fixed) */}
+                             <div className="z-30 h-24 w-36 bg-[#2F36CF] flex items-center justify-center shadow-2xl relative border-x-2 border-white/10">
+                                  <div className="flex items-center justify-center w-full h-full relative z-20 bg-[#2F36CF]">
+                                       <img src={match.tournamentLogo || "/img/logo.png"} className="h-20 w-20 object-contain" onError={(e) => e.target.style.display='none'} />
+                                  </div>
+                                  
+                                  <div className="absolute bottom-0 left-0 w-full h-2 bg-[#2F36CF] z-30"></div>
+
+                                  {/* SPONSOR LOGO BAR */}
+                                  {match.showBroadcastSponsors && match.broadcastSponsors && match.broadcastSponsors.length > 0 && (
+                                    <div className="absolute top-24 h-10 w-[140px] -ml-[2px] bg-white flex items-center justify-center shadow-xl border-x-2 border-b-2 border-white/10 rounded-b-2xl animate-in slide-in-from-top-6 -z-10 flex flex-col justify-end pb-1">
+                                         {match.broadcastSponsors.length === 1 ? (
+                                            <img src={match.broadcastSponsors[0]} className="h-10 w-32 object-contain" />
+                                        ) : (
+                                            <img 
+                                                key={sponsorIdx} 
+                                                src={match.broadcastSponsors[sponsorIdx]} 
+                                                className="h-10 w-32 object-contain animate-fade-cycle" 
+                                            />
+                                        )}
+                                    </div>
+                                  )}
+                             </div>
+
+                             {/* RIGHT SIDE GROUP */}
+                             <div className="flex items-center z-10 flex-row-reverse relative">
+
+                                 {topLabelR && !introMode && !isRightPlayer && !isFullTime && (
+                                      <div className={`absolute -top-8 right-0 h-8 flex items-center justify-center text-white text-sm font-black tracking-wider uppercase z-30 transition-all duration-300 w-[356px] shadow-lg ${topLabelR.className}`}>
+                                          {topLabelR.text}
+                                      </div>
+                                 )}
+
+                                 {/* Name Bar (Outer) */}
+                                 <div style={{ backgroundColor: right.color, width: isFullTime ? '550px' : (introMode ? '600px' : '260px') }} className="h-24 transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] flex items-center justify-center relative z-0 shadow-lg overflow-hidden">
+                                      <span className="font-black uppercase whitespace-nowrap transition-all duration-500 text-5xl" style={{ color: getTextColor(right.color) }}>
+                                          {(introMode || isFullTime) ? right.name : (right.country || right.name.substring(0,3))}
+                                      </span>
+                                      <div className={`absolute left-0 top-0 bottom-0 w-full overflow-hidden flex items-center justify-center transition-opacity duration-500 ${(introMode || isFullTime) ? 'opacity-20' : 'opacity-0'}`}>
+                                           {right.flag && <img src={right.flag} className="w-full h-full object-cover"/>}
+                                      </div>
+                                      
+                                      <div className="absolute bottom-0 left-0 w-full h-2 bg-[#2F36CF] z-30"></div>
+                                 </div>
+
+                                 {/* Sets Box (Middle) - UPDATED to Theme Blue */}
+                                 <div className={`h-24 bg-[#f05c22] text-white flex flex-col items-center justify-center border-l-2 border-black/10 z-10 overflow-hidden transition-all duration-1000 ${introMode ? 'w-0 opacity-0' : 'w-24 opacity-100'}`}>
+                                      <span className="text-[30px] font-bold uppercase leading-none mt-1 text-white/70">SETS</span>
+                                      <span className="text-5xl font-black leading-none">{right.sets}</span>
+                                      <div className="absolute bottom-0 left-0 w-full h-2 bg-[#2F36CF]"></div>
+
+                                 </div>
+                                 
+                                 {/* Score Box (Inner) */}
+                                 <div className={`h-24 bg-white text-slate-900 flex items-center justify-center z-20 overflow-hidden transition-all duration-1000 relative ${introMode || isFullTime ? 'w-0 opacity-0' : 'w-32 opacity-100'}`}>
+                                      <span key={right.score} className="text-6xl font-black animate-score-pop">{right.score}</span>
+                                      <div className="absolute top-1 right-2 flex gap-1">{[...Array(right.timeouts)].map((_,i)=><div key={i} className="w-2 h-2 bg-red-500 rounded-full"/>)}</div>
+                                      {sR && <img src="/img/volleyball.png" className="w-5 absolute left-1 top-1 animate-spin-slow"/>}
+                                      
+                                      {/* Theme Blue Bottom Line */}
+                                      <div className="absolute bottom-0 left-0 w-full h-2 bg-[#2F36CF]"></div>
+                                 </div>
+                             </div>
+
+                             {/* --- PLAYER OVERLAY (RIGHT) - ABSOLUTE --- */}
+                             <div className={`absolute right-0 bottom-full h-24 flex items-center mb-0 transition-all duration-700 ease-in-out z-[100] overflow-hidden ${isRightPlayer && !isFullTime ? 'w-[356px] opacity-100' : 'w-0 opacity-0'}`}>
+                                {activeP && isRightPlayer && (
+                                    <div className="w-[356px] h-24 bg-[#2F36CF] text-white flex items-center relative px-6 border-l-2 border-white/10 flex-row-reverse shadow-xl">
+                                         <div className="flex-1 flex items-center justify-between flex-row-reverse gap-4">
+                                             <span className="text-5xl font-black text-white">{activeP.number}</span>
+                                             <div className="text-left overflow-hidden">
+                                                 <div className="text-xl font-bold uppercase leading-tight whitespace-nowrap truncate">{activeP.name}</div>
+                                                 <div className="text-sm text-white/70 font-bold uppercase tracking-widest">{activeP.position}</div>
+                                             </div>
+                                         </div>
+                                    </div>
+                                )}
+                             </div>
+                         </>
+                     );
+                 })()}
+
+             </div>
+
+          </div>
+
+          {/* Lineup Animation */}
+          {show && (match.activeView === 'lineup_A' || match.activeView === 'lineup_B') && (
+               <LineupDisplay 
+                   team={match.activeView==='lineup_A' ? currentTeamA : currentTeamB} 
+                   ids={match.activeView==='lineup_A' ? match.lineupA : match.lineupB} 
+                   step={match.lineupStep}
+               />
+          )}
+      </div>
+  )
 }
 
 // --- Lineup Display ---
@@ -1367,357 +1837,6 @@ function LineupDisplay({ team, ids, step }) {
 
         </div>
     )
-}
-
-// --- Broadcast Overlay ---
-function BroadcastOverlay({ matchId }) {
-  const [matches] = useSyncedState('volleyball_matches', []);
-  const [teams] = useSyncedState('volleyball_teams', []); 
-  const matchList = Array.isArray(matches) ? matches : [];
-  const match = matchList.find(m => m.id === matchId);
-  const [introMode, setIntroMode] = useState(true);
-  const [sponsorIdx, setSponsorIdx] = useState(0);
-
-  const getLatestTeamData = (matchTeam) => {
-      if (!matchTeam) return null;
-      const latest = (teams || []).find(t => t.id === matchTeam.id);
-      if (!latest) return matchTeam;
-      return {
-          ...matchTeam,
-          name: latest.name,
-          country: latest.country,
-          logo: latest.logo,
-          flag: latest.flag,
-          roster: latest.roster
-      };
-  };
-
-  // Intro Sequence Effect
-  useEffect(() => {
-      if (match?.activeView === 'scoreboard' && match?.graphicsVisible) {
-          setIntroMode(true);
-          const timer = setTimeout(() => {
-              setIntroMode(false);
-          }, 4000); // 4 seconds intro
-          return () => clearTimeout(timer);
-      } else {
-          setIntroMode(false); 
-      }
-  }, [match?.activeView, match?.graphicsVisible]);
-
-  // Sponsor Rotation Effect 
-  useEffect(() => {
-    if (match?.showBroadcastSponsors && (match?.broadcastSponsors?.length || 0) > 1) {
-        const interval = setInterval(() => {
-            setSponsorIdx(prev => (prev + 1) % match.broadcastSponsors.length);
-        }, 5000); // Rotate every 5 seconds
-        return () => clearInterval(interval);
-    } else {
-        setSponsorIdx(0); // Reset index if not rotating or only 1
-    }
-  }, [match?.broadcastSponsors, match?.showBroadcastSponsors]);
-
-  if(!match || !match.teamA || !match.teamB) return <div className="text-white p-10">Waiting for data...</div>;
-
-  const currentTeamA = getLatestTeamData(match.teamA);
-  const currentTeamB = getLatestTeamData(match.teamB);
-
-  const show = match.graphicsVisible;
-  // Apply swap logic to the LATEST data
-  const left = match.isSwapped ? currentTeamB : currentTeamA;
-  const right = match.isSwapped ? currentTeamA : currentTeamB;
-  const sL = match.serveVisible && match.serving === (match.isSwapped?'B':'A');
-  const sR = match.serveVisible && match.serving === (match.isSwapped?'A':'B');
-
-  // Referee Data (Manual selection)
-  const currentRef = (match.activeReferee || 1) === 1 ? match.referee1 : match.referee2;
-  const refTitle = (match.activeReferee || 1) === 1 ? "1ST REFEREE" : "2ND REFEREE";
-
-  // Logic: Set/Match Point
-  const setNum = (match.teamA.sets||0) + (match.teamB.sets||0) + 1;
-  const limit = setNum===5 ? 15 : 25;
-  const getPointState = (s1, s2, sets) => {
-      if (s1 >= limit && s1 >= s2 + 2) return null;
-
-      if(s1 < limit-1 || s1 <= s2) return null;
-      if(sets===2 || setNum===5) return 'MATCH POINT';
-      return 'SET POINT';
-  }
-  const statusL = getPointState(left.score||0, right.score||0, left.sets||0);
-  const statusR = getPointState(right.score||0, left.score||0, right.sets||0);
-
-  const allPlayers = [...(currentTeamA?.roster || []), ...(currentTeamB?.roster || [])];
-  const activeP = allPlayers.find(p => p.id === match.activePlayerId);
-  
-  const isLeftPlayer = left.roster?.find(p => p.id === match.activePlayerId);
-  const isRightPlayer = right.roster?.find(p => p.id === match.activePlayerId);
-  const getTopLabel = (isTimeout, status) => {
-      if (isTimeout) {
-          return { text: "TIMEOUT", className: "animate-flash-timeout bg-[#dc2626]" };
-      } else if (status) {
-          return { text: status, className: "bg-[#2F36CF]" };
-      }
-      return null;
-  };
-
-  const topLabelL = getTopLabel(left.activeTimeout, statusL);
-  const topLabelR = getTopLabel(right.activeTimeout, statusR);
-
-  const barHeight = "h-24";
-
-  // --- Summary Helper ---
-  const history = match.setHistory || [];
-  const getSetScore = (teamSide, setIndex) => {
-      const set = history.find(h => h.set === setIndex);
-      if (!set) return "";
-      const isTeamA = teamSide.id === match.teamA.id;
-      return isTeamA ? set.scoreA : set.scoreB;
-  };
-
-  return (
-      <div className="w-[1920px] h-[1080px] relative overflow-hidden font-sans bg-transparent">
-          
-          {/* --- MATCH SUMMARY (TOP LEFT) --- */}
-          {show && match.activeView === 'summary' && (
-              <div className="absolute top-10 left-10 z-50 animate-in slide-in-from-left-4 fade-in duration-500">
-                  <div className="flex flex-col shadow-2xl border-2 border-white/20 rounded-xl overflow-hidden bg-slate-900/90 backdrop-blur">
-                      <div className="bg-[#2F36CF] w-full h-16 flex justify-start items-center border-b border-white/10">
-                          <img src="/img/ledlogo.png" className="h-full w-auto object-contain" onError={(e) => e.target.style.display='none'}/>
-                      </div>
-
-                      {/* Column Headers */}
-                      <div className="flex bg-slate-800 border-b border-white/10 text-xs font-bold text-slate-400">
-                           <div className="w-[180px] p-2 pl-4">TEAMS</div> 
-                           <div className="w-16 flex items-center justify-center border-l border-white/10">TOTAL</div>
-                           {[1,2,3,4,5].map(i => (
-                               <div key={i} className="w-16 flex items-center justify-center border-l border-white/10">SET {i}</div>
-                           ))}
-                      </div>
-                      
-                      {/* Table Row 1 (Left Team) */}
-                      <div className="flex h-16 border-b border-white/10 bg-white">
-                           {/* Team Name + Flag */}
-                           <div style={{backgroundColor: left.color}} className="w-[180px] flex items-center justify-between px-4 relative overflow-hidden">
-                               <span className="text-2xl font-black text-white uppercase relative z-10 drop-shadow-md truncate" style={{ color: getTextColor(left.color) }}>{left.country}</span>
-                               {left.flag && <img src={left.flag} className="h-8 w-12 object-cover border border-white/20 shadow-sm z-10 ml-2" />}
-                               <div className="absolute inset-0 bg-gradient-to-r from-black/20 to-transparent"></div>
-                           </div>
-                           {/* Total Sets */}
-                           <div className="w-16 bg-[#2F36CF] flex items-center justify-center text-white border-x border-slate-200">
-                               <span className="text-4xl font-black leading-none">{left.sets}</span>
-                           </div>
-                           {/* Set Scores */}
-                           {[1,2,3,4,5].map(i => {
-                               const score = getSetScore(left, i);
-                               const opponentScore = getSetScore(right, i);
-                               const won = score > opponentScore && score !== "";
-                               return (
-                                   <div key={i} className="w-16 flex items-center justify-center border-r border-slate-200 last:border-0 bg-white">
-                                       <span className={`text-2xl font-bold ${won ? 'text-black font-black' : 'text-slate-400'}`}>{score}</span>
-                                   </div>
-                               )
-                           })}
-                      </div>
-
-                      {/* Table Row 2 (Right Team) */}
-                      <div className="flex h-16 bg-white">
-                           {/* Team Name + Flag */}
-                           <div style={{backgroundColor: right.color}} className="w-[180px] flex items-center justify-between px-4 relative overflow-hidden">
-                               <span className="text-2xl font-black text-white uppercase relative z-10 drop-shadow-md truncate" style={{ color: getTextColor(right.color) }}>{right.country}</span>
-                                {right.flag && <img src={right.flag} className="h-8 w-12 object-cover border border-white/20 shadow-sm z-10 ml-2" />}
-                               <div className="absolute inset-0 bg-gradient-to-r from-black/20 to-transparent"></div>
-                           </div>
-                           {/* Total Sets */}
-                           <div className="w-16 bg-[#2F36CF] flex items-center justify-center text-white border-x border-slate-200">
-                               <span className="text-4xl font-black leading-none">{right.sets}</span>
-                           </div>
-                           {/* Set Scores */}
-                           {[1,2,3,4,5].map(i => {
-                               const score = getSetScore(right, i);
-                               const opponentScore = getSetScore(left, i);
-                               const won = score > opponentScore && score !== "";
-                               return (
-                                   <div key={i} className="w-16 flex items-center justify-center border-r border-slate-200 last:border-0 bg-white">
-                                       <span className={`text-2xl font-bold ${won ? 'text-black font-black' : 'text-slate-400'}`}>{score}</span>
-                                   </div>
-                               )
-                           })}
-                      </div>
-                  </div>
-              </div>
-          )}
-
-          {/* --- REFEREE LOWER THIRD (CENTER BOTTOM) --- */}
-          <div className={`absolute bottom-20 left-1/2 -translate-x-1/2 flex items-center justify-center transition-all duration-700 z-50 ${show && match.activeView==='referees' ? 'translate-y-0 opacity-100' : 'translate-y-48 opacity-0'}`}>
-              <div className="flex items-center shadow-2xl">
-                  {/* Left Label Box */}
-                  <div className="w-[200px] h-24 bg-blue-800 text-white flex items-center justify-center border-r-2 border-black/10">
-                      <span className="font-black text-xl uppercase tracking-wider">{refTitle}</span>
-                  </div>
-                  {/* Right Content Box */}
-                  <div className="w-[600px] h-24 bg-white flex flex-col items-start justify-center px-8 relative overflow-hidden">
-                      {/* Orange Bottom Line */}
-                      <div className="absolute bottom-0 left-0 w-full h-2 bg-[#f05c22]"></div>
-
-                      <div key={match.activeReferee || 1} className="animate-in slide-in-from-bottom-4 fade-in duration-500">
-                          <div className="text-4xl font-black text-slate-900 uppercase leading-none mb-1">
-                              {currentRef?.name || "Official"}
-                          </div>
-                          <div className="text-lg font-bold text-slate-500 uppercase tracking-widest">
-                              {currentRef?.country || ""}
-                          </div>
-                      </div>
-                  </div>
-              </div>
-          </div>
-
-          {/* Main Scoreboard Container */}
-
-          <div className={`absolute bottom-20 left-1/2 -translate-x-1/2 flex items-center justify-center transition-all duration-700 z-40 ${show && (match.activeView==='scoreboard' || match.activeView==='full_time') ? 'translate-y-0 opacity-100' : 'translate-y-48 opacity-0'}`}>
-
-             <div className="relative flex items-center">
-
-                 {(() => {
-                     const isFullTime = match.activeView === 'full_time';
-                     
-                     return (
-                         <>
-                             {/* --- PLAYER OVERLAY (LEFT)*/}
-                             <div className={`absolute left-0 bottom-full h-24 flex items-center mb-0 transition-all duration-700 ease-in-out z-[100] overflow-hidden ${isLeftPlayer && !isFullTime ? 'w-[356px] opacity-100' : 'w-0 opacity-0'}`}>
-                                {activeP && isLeftPlayer && (
-                                    <div className="w-[356px] h-24 bg-[#2F36CF] text-white flex items-center relative px-6 border-r-2 border-white/10 shadow-xl">
-                                         <div className="flex-1 flex items-center justify-between gap-4">
-                                             <span className="text-5xl font-black text-white">{activeP.number}</span>
-                                             <div className="text-right overflow-hidden">
-                                                 <div className="text-xl font-bold uppercase leading-tight whitespace-nowrap truncate">{activeP.name}</div>
-                                                 <div className="text-sm text-white/70 font-bold uppercase tracking-widest">{activeP.position}</div>
-                                             </div>
-                                         </div>
-                                    </div>
-                                )}
-                             </div>
-
-                             {/* LEFT SIDE GROUP */}
-                             <div className="flex items-center z-10 relative">
-                                 {topLabelL && !introMode && !isLeftPlayer && !isFullTime && (
-                                      <div className={`absolute -top-8 left-0 h-8 flex items-center justify-center text-white text-sm font-black tracking-wider uppercase z-30 transition-all duration-300 w-[356px] shadow-lg ${topLabelL.className}`}>
-                                          {topLabelL.text}
-                                      </div>
-                                 )}
-
-                                 {/* Name Bar (Outer) */}
-                                 <div style={{ backgroundColor: left.color, width: isFullTime ? '550px' : (introMode ? '600px' : '260px') }} className="h-24 transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] flex items-center justify-center relative z-0 shadow-lg overflow-hidden">
-                                      <span className="font-black uppercase whitespace-nowrap transition-all duration-500 text-5xl" style={{ color: getTextColor(left.color) }}>
-                                          {/* Show Full Name in Full Time or Intro, otherwise Short Code */}
-                                          {(introMode || isFullTime) ? left.name : (left.country || left.name.substring(0,3))}
-                                      </span>
-                                      {/* Flag - Intro Only */}
-                                      <div className={`absolute left-0 top-0 bottom-0 w-full overflow-hidden flex items-center justify-center transition-opacity duration-500 ${(introMode || isFullTime) ? 'opacity-20' : 'opacity-0'}`}>
-                                           {left.flag && <img src={left.flag} className="w-full h-full object-cover"/>}
-                                      </div>
-                                 </div>
-                                 
-                                 {/* Sets Box (Middle) */}
-                                 <div className={`h-24 bg-[#f05c22] text-white flex flex-col items-center justify-center border-r-2 border-black/10 z-10 overflow-hidden transition-all duration-1000 ${introMode ? 'w-0 opacity-0' : 'w-24 opacity-100'}`}>
-                                      <span className="text-[30px] font-bold uppercase leading-none mt-1 text-white/70">SETS</span>
-                                      <span className="text-5xl font-black leading-none">{left.sets}</span>
-                                 </div>
-
-                                 {/* Score Box (Inner) */}
-                                 <div className={`h-24 bg-white text-slate-900 flex items-center justify-center z-20 overflow-hidden transition-all duration-1000 relative ${introMode || isFullTime ? 'w-0 opacity-0' : 'w-32 opacity-100'}`}>
-                                      <span key={left.score} className="text-6xl font-black animate-score-pop">{left.score}</span>
-                                      <div className="absolute top-1 left-2 flex gap-1">{[...Array(left.timeouts)].map((_,i)=><div key={i} className="w-2 h-2 bg-red-500 rounded-full"/>)}</div>
-                                      {sL && <img src="/img/volleyball.png" className="w-5 absolute right-1 top-1 animate-spin-slow"/>}
-                                 </div>
-                             </div>
-
-                             {/* CENTER LOGO (Fixed) */}
-                             <div className="z-30 h-24 w-36 bg-[#2F36CF] flex items-center justify-center shadow-2xl relative border-x-2 border-white/10">
-                                  <div className="flex items-center justify-center w-full h-full relative z-20 bg-[#2F36CF]">
-                                       <img src={match.tournamentLogo || "/img/logo.png"} className="h-20 w-20 object-contain" onError={(e) => e.target.style.display='none'} />
-                                  </div>
-
-                                  {/* SPONSOR LOGO BAR - Broadcast Only - Enabled for Full Time as well now */}
-                                  {match.showBroadcastSponsors && match.broadcastSponsors && match.broadcastSponsors.length > 0 && (
-                                    <div className="absolute top-24 h-10 w-[140px] -ml-[2px] bg-white flex items-center justify-center shadow-xl border-x-2 border-b-2 border-white/10 rounded-b-2xl animate-in slide-in-from-top-6 -z-10 flex flex-col justify-end pb-1">
-                                         {match.broadcastSponsors.length === 1 ? (
-                                            <img src={match.broadcastSponsors[0]} className="h-10 w-32 object-contain" />
-                                        ) : (
-                                            <img 
-                                                key={sponsorIdx} 
-                                                src={match.broadcastSponsors[sponsorIdx]} 
-                                                className="h-10 w-32 object-contain animate-fade-cycle" 
-                                            />
-                                        )}
-                                    </div>
-                                  )}
-                             </div>
-
-                             {/* RIGHT SIDE GROUP */}
-                             <div className="flex items-center z-10 flex-row-reverse relative">
-
-                                 {topLabelR && !introMode && !isRightPlayer && !isFullTime && (
-                                      <div className={`absolute -top-8 right-0 h-8 flex items-center justify-center text-white text-sm font-black tracking-wider uppercase z-30 transition-all duration-300 w-[356px] shadow-lg ${topLabelR.className}`}>
-                                          {topLabelR.text}
-                                      </div>
-                                 )}
-
-                                 {/* Name Bar (Outer) */}
-                                 <div style={{ backgroundColor: right.color, width: isFullTime ? '550px' : (introMode ? '600px' : '260px') }} className="h-24 transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] flex items-center justify-center relative z-0 shadow-lg overflow-hidden">
-                                      <span className="font-black uppercase whitespace-nowrap transition-all duration-500 text-5xl" style={{ color: getTextColor(right.color) }}>
-                                          {(introMode || isFullTime) ? right.name : (right.country || right.name.substring(0,3))}
-                                      </span>
-                                      <div className={`absolute left-0 top-0 bottom-0 w-full overflow-hidden flex items-center justify-center transition-opacity duration-500 ${(introMode || isFullTime) ? 'opacity-20' : 'opacity-0'}`}>
-                                           {right.flag && <img src={right.flag} className="w-full h-full object-cover"/>}
-                                      </div>
-                                 </div>
-
-                                 {/* Sets Box (Middle) */}
-                                 <div className={`h-24 bg-[#f05c22] text-white flex flex-col items-center justify-center border-l-2 border-black/10 z-10 overflow-hidden transition-all duration-1000 ${introMode ? 'w-0 opacity-0' : 'w-24 opacity-100'}`}>
-                                      <span className="text-[30px] font-bold uppercase leading-none mt-1 text-white/70">SETS</span>
-                                      <span className="text-5xl font-black leading-none">{right.sets}</span>
-                                 </div>
-                                 
-                                 {/* Score Box (Inner) */}
-                                 <div className={`h-24 bg-white text-slate-900 flex items-center justify-center z-20 overflow-hidden transition-all duration-1000 relative ${introMode || isFullTime ? 'w-0 opacity-0' : 'w-32 opacity-100'}`}>
-                                      <span key={right.score} className="text-6xl font-black animate-score-pop">{right.score}</span>
-                                      <div className="absolute top-1 right-2 flex gap-1">{[...Array(right.timeouts)].map((_,i)=><div key={i} className="w-2 h-2 bg-red-500 rounded-full"/>)}</div>
-                                      {sR && <img src="/img/volleyball.png" className="w-5 absolute left-1 top-1 animate-spin-slow"/>}
-                                 </div>
-                             </div>
-
-                             {/* --- PLAYER OVERLAY (RIGHT) - ABSOLUTE --- */}
-                             <div className={`absolute right-0 bottom-full h-24 flex items-center mb-0 transition-all duration-700 ease-in-out z-[100] overflow-hidden ${isRightPlayer && !isFullTime ? 'w-[356px] opacity-100' : 'w-0 opacity-0'}`}>
-                                {activeP && isRightPlayer && (
-                                    <div className="w-[356px] h-24 bg-[#2F36CF] text-white flex items-center relative px-6 border-l-2 border-white/10 flex-row-reverse shadow-xl">
-                                         <div className="flex-1 flex items-center justify-between flex-row-reverse gap-4">
-                                             <span className="text-5xl font-black text-white">{activeP.number}</span>
-                                             <div className="text-left overflow-hidden">
-                                                 <div className="text-xl font-bold uppercase leading-tight whitespace-nowrap truncate">{activeP.name}</div>
-                                                 <div className="text-sm text-white/70 font-bold uppercase tracking-widest">{activeP.position}</div>
-                                             </div>
-                                         </div>
-                                    </div>
-                                )}
-                             </div>
-                         </>
-                     );
-                 })()}
-
-             </div>
-
-          </div>
-
-          {/* Lineup Animation */}
-          {show && (match.activeView === 'lineup_A' || match.activeView === 'lineup_B') && (
-               <LineupDisplay 
-                   team={match.activeView==='lineup_A' ? currentTeamA : currentTeamB} 
-                   ids={match.activeView==='lineup_A' ? match.lineupA : match.lineupB} 
-                   step={match.lineupStep}
-               />
-          )}
-      </div>
-  )
 }
 
 // --- Stadium / LED View ( 1:1 & 16:9) ---
