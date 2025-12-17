@@ -13,6 +13,8 @@ const app = express();
 const httpServer = createServer(app);
 
 const io = new Server(httpServer, {
+  maxHttpBufferSize: 5e11,
+  pingTimeout: 60000,
   cors: {
     origin: "*", 
     methods: ["GET", "POST"]
