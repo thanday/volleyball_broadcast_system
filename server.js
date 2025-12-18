@@ -25,9 +25,10 @@ const clientDistPath = path.join(__dirname, 'dist');
 app.use(express.static(clientDistPath));
 
 /* React SPA fallback */
-app.get('*', (req, res) => {
+app.get('/*', (req, res) => {
   res.sendFile(path.join(clientDistPath, 'index.html'));
 });
+
 
 let dataStore = {};
 
