@@ -1318,9 +1318,9 @@ function ControlPanel({ matchId, onBack }) {
                                 {/* NEW: ASPECT RATIO SELECTOR */}
                                 <div className="mb-4 bg-white p-2 rounded border shadow-sm">
                                     <label className="text-[10px] font-bold text-slate-500 block mb-1">SCREEN ASPECT RATIO</label>
-                                    <select value={match.ledAspectRatio || '16:9'} onChange={(e) => updateMatch({ ledAspectRatio: e.target.value })} className="w-full text-sm font-bold border rounded p-1">
-                                        <option value="16:9">16:9 Widescreen (Standard)</option>
+                                    <select value={match.ledAspectRatio || '1:1'} onChange={(e) => updateMatch({ ledAspectRatio: e.target.value })} className="w-full text-sm font-bold border rounded p-1">
                                         <option value="1:1">1:1 Square (Jumbotron)</option>
+                                        <option value="16:9">16:9 Widescreen (Standard)</option>
                                     </select>
                                 </div>
 
@@ -1642,12 +1642,12 @@ function BroadcastOverlay({ matchId }) {
                         <div className="flex flex-col">
                             {standings.map((t, i) => {
                                 // Highlight Top 2 Logic
-                                const isTopTwo = i < 2; 
+                                const isTopTwo = i < 0; 
                                 return (
                                 <div key={t.id} className={`grid grid-cols-12 items-center py-4 border-b border-white/5 text-white transition-all duration-500 relative overflow-hidden ${isTopTwo ? 'bg-gradient-to-r from-yellow-500/20 to-transparent' : 'even:bg-white/5'}`}>
                                     
                                     {/* Top 2 Highlight Bar */}
-                                    {isTopTwo && <div className="absolute left-0 top-0 bottom-0 w-1 bg-orange-600 shadow-[0_0_10px_rgba(250,204,21,0.8)]"></div>}
+                                    {isTopTwo && <div className="absolute left-0 top-0 bottom-0 w-1 bg-yellow-600 shadow-[0_0_10px_rgba(250,204,21,0.8)]"></div>}
 
                                     <div className="col-span-1 flex justify-center">
                                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-black text-xl shadow-lg border border-white/20 ${isTopTwo ? 'bg-orange-600 text-black scale-110' : 'bg-[#2F36CF] text-white'}`}>
