@@ -2,7 +2,7 @@ module.exports = {
     apps: [
       {
         name: "volleyball-server",
-        script: "./server/server.js",
+        script: "./server.js",
         env: {
           NODE_ENV: "production",
         },
@@ -15,7 +15,7 @@ module.exports = {
         name: "volleyball-client",
         script: "npm",
         args: "run dev",
-        cwd: "./client", // Important: runs the command inside the client folder
+        cwd: "./volleyball-broadcast", 
         env: {
           NODE_ENV: "development",
         },
