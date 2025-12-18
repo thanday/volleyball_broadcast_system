@@ -338,6 +338,8 @@ export default function App() {
 // --- PUBLIC PORTAL (Redesigned Dashboard) ---
 function PublicPortal() {
     const { matches, teams } = useVolleyballData();
+    const [showAllResults, setShowAllResults] = useState(false);
+    const [showAllSchedule, setShowAllSchedule] = useState(false);
 
     const matchList = Array.isArray(matches) ? matches : [];
     const teamList = Array.isArray(teams) ? teams : [];
@@ -415,8 +417,10 @@ function PublicPortal() {
         return m.setHistory.map(h => `${h.scoreA}-${h.scoreB}`).join(', ');
     }
 
+    const allUpcoming = [...todaysMatches, ...upcomingMatches];
+
     return (
-        <div className="min-h-screen bg-slate-900 text-white font-sans flex flex-col">
+        <div className="min-h-screen bg-slate-900 text-white font-sans flex flex-col overflow-x-hidden">
             {/* Header */}
             <div className="w-full bg-[#2F36CF] p-4 shadow-lg flex items-center justify-between sticky top-0 z-50 border-b border-white/10">
                 <div className="flex items-center gap-3">
@@ -433,24 +437,25 @@ function PublicPortal() {
                 )}
             </div>
 
-            <div className="max-w-7xl mx-auto w-full p-4 md:p-6 space-y-8">
+            {/* Main Content Area - Full Width for 1920x1080 */}
+            <div className="w-full h-full flex-1 p-4 md:p-6 lg:px-12 xl:px-16 space-y-6 flex flex-col">
 
                 {/* --- HERO SECTION: LIVE OR NEXT MATCH --- */}
                 {heroMatch && (
-                    <div className="w-full animate-in slide-in-from-top-4 duration-700 space-y-4">
+                    <div className="w-full animate-in slide-in-from-top-4 duration-700 space-y-4 shrink-0">
                         <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-white/10 bg-slate-800">
                             {/* Background decoration */}
                             <div className="absolute inset-0 bg-gradient-to-r from-blue-900/40 to-purple-900/40 z-0"></div>
                             <div className="absolute top-0 right-0 p-32 bg-[#2F36CF] blur-[120px] opacity-20 rounded-full"></div>
 
-                            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between p-6 md:p-10 gap-6">
+                            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between p-6 md:p-8 xl:p-10 gap-6">
                                 {/* Left Team */}
                                 <div className="flex-1 flex flex-col items-center gap-4">
-                                    <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-slate-900 border-4 border-white/10 shadow-xl overflow-hidden relative">
+                                    <div className="w-24 h-24 md:w-32 md:h-32 xl:w-40 xl:h-40 rounded-full bg-slate-900 border-4 border-white/10 shadow-xl overflow-hidden relative">
                                         {heroMatch.teamA.flag ? <img src={heroMatch.teamA.flag} className="w-full h-full object-cover" /> : <Flag className="w-10 h-10 text-slate-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />}
                                     </div>
                                     <div className="text-center">
-                                        <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight leading-none mb-1">{heroMatch.teamA.country}</h2>
+                                        <h2 className="text-3xl md:text-5xl xl:text-6xl font-black uppercase tracking-tight leading-none mb-1">{heroMatch.teamA.country}</h2>
                                         <div className="text-sm font-bold text-slate-400">{heroMatch.teamA.name}</div>
                                     </div>
                                 </div>
@@ -459,24 +464,19 @@ function PublicPortal() {
                                 <div className="flex flex-col items-center justify-center w-full md:w-auto">
                                     {heroMatch.status === 'Live' ? (
                                         <>
-                                            {/* UPDATED: Live Status + Set Number */}
                                             <div className="flex items-center gap-2 mb-2">
                                                 <div className="bg-red-600 text-white text-xs font-black uppercase px-3 py-1 rounded-full animate-pulse">Live</div>
                                                 <div className="bg-white/10 text-white text-xs font-black uppercase px-3 py-1 rounded-full">Set {heroMatch.setHistory?.length + 1 || 1}</div>
                                             </div>
-
-                                            {/* UPDATED: Main Focus is now POINTS (Score), not Sets */}
                                             <div className="flex items-center gap-6 md:gap-8">
-                                                <span className="text-7xl md:text-9xl font-black text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.3)] tabular-nums tracking-tighter">
+                                                <span className="text-7xl md:text-9xl xl:text-[10rem] font-black text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.3)] tabular-nums tracking-tighter">
                                                     {heroMatch.teamA.score}
                                                 </span>
                                                 <span className="text-2xl font-bold text-slate-500 uppercase">-</span>
-                                                <span className="text-7xl md:text-9xl font-black text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.3)] tabular-nums tracking-tighter">
+                                                <span className="text-7xl md:text-9xl xl:text-[10rem] font-black text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.3)] tabular-nums tracking-tighter">
                                                     {heroMatch.teamB.score}
                                                 </span>
                                             </div>
-
-                                            {/* UPDATED: Sets display moved down */}
                                             <div className="mt-4 bg-black/40 px-8 py-3 rounded-2xl text-2xl font-black text-yellow-400 border border-yellow-500/30 tracking-widest shadow-lg">
                                                 SETS: {heroMatch.teamA.sets} - {heroMatch.teamB.sets}
                                             </div>
@@ -484,7 +484,7 @@ function PublicPortal() {
                                     ) : (
                                         <>
                                             <div className="bg-[#2F36CF] text-white text-xs font-black uppercase px-3 py-1 rounded-full mb-4">Next Match</div>
-                                            <div className="text-5xl md:text-7xl font-black text-slate-700 tracking-widest">VS</div>
+                                            <div className="text-5xl md:text-7xl xl:text-8xl font-black text-slate-700 tracking-widest">VS</div>
                                             <div className="mt-4 flex flex-col items-center">
                                                 <div className="text-2xl font-bold text-white mb-1">{heroMatch.time}</div>
                                                 <div className="text-sm font-bold text-slate-400 uppercase tracking-widest">{heroMatch.date}</div>
@@ -496,18 +496,18 @@ function PublicPortal() {
 
                                 {/* Right Team */}
                                 <div className="flex-1 flex flex-col items-center gap-4">
-                                    <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-slate-900 border-4 border-white/10 shadow-xl overflow-hidden relative">
+                                    <div className="w-24 h-24 md:w-32 md:h-32 xl:w-40 xl:h-40 rounded-full bg-slate-900 border-4 border-white/10 shadow-xl overflow-hidden relative">
                                         {heroMatch.teamB.flag ? <img src={heroMatch.teamB.flag} className="w-full h-full object-cover" /> : <Flag className="w-10 h-10 text-slate-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />}
                                     </div>
                                     <div className="text-center">
-                                        <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight leading-none mb-1">{heroMatch.teamB.country}</h2>
+                                        <h2 className="text-3xl md:text-5xl xl:text-6xl font-black uppercase tracking-tight leading-none mb-1">{heroMatch.teamB.country}</h2>
                                         <div className="text-sm font-bold text-slate-400">{heroMatch.teamB.name}</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* --- UP NEXT BANNER (Only if Live match exists and Next match exists) --- */}
+                        {/* --- UP NEXT BANNER --- */}
                         {liveMatch && nextMatch && (
                             <div className="w-full bg-slate-800/80 rounded-xl border border-white/5 p-4 flex items-center justify-between shadow-lg backdrop-blur-sm animate-in fade-in slide-in-from-bottom-2">
                                 <div className="flex items-center gap-3">
@@ -526,49 +526,46 @@ function PublicPortal() {
                 )}
 
                 {/* --- MAIN CONTENT GRID --- */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 flex-1">
 
-                    {/* LEFT COLUMN: MATCH LISTS (Span 2) */}
-                    <div className="lg:col-span-2 space-y-8">
+                    {/* LEFT COLUMN: MATCH LISTS (Span 8 on large screens) */}
+                    <div className="xl:col-span-8 space-y-6 flex flex-col">
 
                         {/* Results Section */}
                         {pastMatches.length > 0 && (
-                            <div className="animate-in slide-in-from-left-4 duration-700 delay-100">
-                                <h3 className="flex items-center gap-2 font-black text-lg uppercase tracking-wider text-slate-300 mb-4 pb-2 border-b border-white/10">
-                                    <CheckCircle size={20} className="text-green-500" /> Latest Results
-                                </h3>
+                            <div className="animate-in slide-in-from-left-4 duration-700 delay-100 flex flex-col">
+                                <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
+                                    <h3 className="flex items-center gap-2 font-black text-lg uppercase tracking-wider text-slate-300">
+                                        <CheckCircle size={20} className="text-green-500" /> Latest Results
+                                    </h3>
+                                    {pastMatches.length > 2 && (
+                                        <button onClick={() => setShowAllResults(!showAllResults)} className="text-xs font-bold text-blue-400 hover:text-white uppercase tracking-wider transition-colors flex items-center gap-1">
+                                            {showAllResults ? 'Show Less' : 'View All Results'}
+                                        </button>
+                                    )}
+                                </div>
                                 <div className="space-y-4">
-                                    {pastMatches.map(m => (
+                                    {(showAllResults ? pastMatches : pastMatches.slice(0, 2)).map(m => (
                                         <div key={m.id} className="bg-slate-800 rounded-xl overflow-hidden border border-white/5 shadow-sm hover:border-white/20 transition-all">
-                                            {/* Header */}
                                             <div className="bg-black/20 px-4 py-2 flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                                                 <span>{m.date}</span>
                                                 <span>{m.leagueName}</span>
                                             </div>
-                                            {/* Score Row */}
                                             <div className="p-4 flex items-center justify-between relative">
                                                 <div className="flex-1 flex items-center gap-3">
                                                     <div className={`text-xl md:text-2xl font-black uppercase ${m.teamA.sets > m.teamB.sets ? 'text-white' : 'text-slate-500'}`}>{m.teamA.country}</div>
                                                     {m.teamA.flag && <img src={m.teamA.flag} className="w-6 h-4 object-cover rounded shadow-sm opacity-80" />}
                                                 </div>
-
                                                 <div className="mx-4 flex flex-col items-center z-10">
                                                     <div className="bg-slate-900 px-4 py-1 rounded-lg border border-white/10 text-2xl font-mono font-bold text-white shadow-inner">
                                                         {m.teamA.sets} - {m.teamB.sets}
                                                     </div>
                                                 </div>
-
                                                 <div className="flex-1 flex items-center gap-3 justify-end">
                                                     {m.teamB.flag && <img src={m.teamB.flag} className="w-6 h-4 object-cover rounded shadow-sm opacity-80" />}
                                                     <div className={`text-xl md:text-2xl font-black uppercase ${m.teamB.sets > m.teamA.sets ? 'text-white' : 'text-slate-500'}`}>{m.teamB.country}</div>
                                                 </div>
-
-                                                {/* Set Scores Overlay/Subtitle */}
-                                                <div className="absolute -bottom-1 left-0 w-full text-center">
-
-                                                </div>
                                             </div>
-                                            {/* Detailed Set Scores */}
                                             <div className="px-4 pb-3 pt-0 text-center">
                                                 <span className="text-xs font-mono font-bold text-slate-500 tracking-widest">{getSetScores(m)}</span>
                                             </div>
@@ -579,13 +576,20 @@ function PublicPortal() {
                         )}
 
                         {/* Today & Upcoming */}
-                        {(todaysMatches.length > 0 || upcomingMatches.length > 0) && (
-                            <div className="animate-in slide-in-from-left-4 duration-700 delay-200">
-                                <h3 className="flex items-center gap-2 font-black text-lg uppercase tracking-wider text-slate-300 mb-4 pb-2 border-b border-white/10">
-                                    <Calendar size={20} className="text-blue-500" /> Schedule
-                                </h3>
+                        {allUpcoming.length > 0 && (
+                            <div className="animate-in slide-in-from-left-4 duration-700 delay-200 flex flex-col flex-1">
+                                <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
+                                    <h3 className="flex items-center gap-2 font-black text-lg uppercase tracking-wider text-slate-300">
+                                        <Calendar size={20} className="text-blue-500" /> Schedule
+                                    </h3>
+                                    {allUpcoming.length > 3 && (
+                                        <button onClick={() => setShowAllSchedule(!showAllSchedule)} className="text-xs font-bold text-blue-400 hover:text-white uppercase tracking-wider transition-colors flex items-center gap-1">
+                                            {showAllSchedule ? 'Show Less' : 'View All Matches'}
+                                        </button>
+                                    )}
+                                </div>
                                 <div className="space-y-3">
-                                    {[...todaysMatches, ...upcomingMatches].map(m => (
+                                    {(showAllSchedule ? allUpcoming : allUpcoming.slice(0, 3)).map(m => (
                                         <div key={m.id} className="group bg-slate-800/50 rounded-xl p-4 flex items-center justify-between border border-white/5 hover:bg-slate-800 hover:border-blue-500/30 transition-all">
                                             <div className="flex items-center gap-4">
                                                 <div className="flex flex-col items-center w-16 bg-white/5 rounded p-2">
@@ -611,8 +615,8 @@ function PublicPortal() {
                         )}
                     </div>
 
-                    {/* RIGHT COLUMN: STANDINGS (Span 1) */}
-                    <div className="lg:col-span-1">
+                    {/* RIGHT COLUMN: STANDINGS (Span 4 on large screens) */}
+                    <div className="xl:col-span-4 h-full">
                         <div className="sticky top-24 animate-in slide-in-from-right-4 duration-700 delay-300">
                             <div className="bg-slate-800 rounded-2xl shadow-xl overflow-hidden border border-white/10">
                                 <div className="bg-[#2F36CF] p-4 flex justify-between items-center">
@@ -664,7 +668,7 @@ function PublicPortal() {
             </div>
 
             {/* Footer */}
-            <div className="w-full text-center p-6 text-slate-600 text-xs mt-auto border-t border-white/5 bg-black/20">
+            <div className="w-full text-center p-6 text-slate-600 text-xs mt-auto border-t border-white/5 bg-black/20 shrink-0">
                 Live Scoring & Results System
             </div>
         </div>
@@ -791,7 +795,8 @@ function TeamManager({ onBack }) {
 
 // --- Dashboard ---
 function Dashboard({ onControl, onOutput, onStadium, onManageTeams, onManageReferees }) {
-    const { matches, setMatches, teams, referees, status } = useVolleyballData();
+    // UPDATED: Destructure setTeams and setReferees to allow factory reset
+    const { matches, setMatches, teams, setTeams, referees, setReferees, status } = useVolleyballData();
 
     const [isCreating, setIsCreating] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
@@ -882,10 +887,24 @@ function Dashboard({ onControl, onOutput, onStadium, onManageTeams, onManageRefe
         }
     }
 
+    // UPDATED: Factory Reset now clears Server Data, not just local storage
     const factoryReset = () => {
-        if (confirm("FACTORY RESET WARNING: This will delete ALL Teams, Matches, Referees, and Settings. The app will return to its initial state. Are you sure?")) {
-            window.localStorage.clear();
-            window.location.href = window.location.pathname;
+        if (confirm("FACTORY RESET WARNING: This will delete ALL Teams, Matches, Referees, and Settings from the SERVER DATABASE. The app will return to its initial state. Are you sure?")) {
+            // 1. Wipe Data on Server
+            setMatches([]);
+            setTeams([]);
+            setReferees([]);
+            
+            // 2. Clear Local Preferences
+            window.localStorage.removeItem('volleyball_matches');
+            window.localStorage.removeItem('volleyball_teams');
+            window.localStorage.removeItem('volleyball_referees');
+            
+            // 3. Reload
+            setTimeout(() => {
+                alert("System Reset Complete.");
+                window.location.href = window.location.pathname;
+            }, 500);
         }
     }
 
@@ -1339,10 +1358,10 @@ function ControlPanel({ matchId, onBack }) {
                                 <h3 className="font-bold mb-3">Main Views</h3>
                                 <div className="space-y-2">
                                     <button onClick={() => toggleView('scoreboard')} className={`w-full p-3 rounded font-bold border-2 transition-all ${match.activeView === 'scoreboard' && match.graphicsVisible ? 'border-green-500 bg-green-50 text-green-700 shadow-inner' : 'border-transparent bg-slate-50'}`}>Scoreboard {match.activeView === 'scoreboard' && match.graphicsVisible ? '(ON)' : ''}</button>
+                                    <button onClick={() => toggleView('full_time')} className={`w-full p-3 rounded font-bold border-2 transition-all ${match.activeView === 'full_time' && match.graphicsVisible ? 'border-green-500 bg-green-50 text-green-700 shadow-inner' : 'border-transparent bg-slate-50'}`}>Full Time Result {match.activeView === 'full_time' && match.graphicsVisible ? '(ON)' : ''}</button>
                                     <button onClick={() => toggleView('referees')} className={`w-full p-3 rounded font-bold border-2 transition-all ${match.activeView === 'referees' && match.graphicsVisible ? 'border-green-500 bg-green-50 text-green-700 shadow-inner' : 'border-transparent bg-slate-50'}`}>Referees {match.activeView === 'referees' && match.graphicsVisible ? '(ON)' : ''}</button>
                                     <button onClick={() => toggleView('summary')} className={`w-full p-3 rounded font-bold border-2 transition-all ${match.activeView === 'summary' && match.graphicsVisible ? 'border-green-500 bg-green-50 text-green-700 shadow-inner' : 'border-transparent bg-slate-50'}`}>Match Summary {match.activeView === 'summary' && match.graphicsVisible ? '(ON)' : ''}</button>
-                                    <button onClick={() => toggleView('full_time')} className={`w-full p-3 rounded font-bold border-2 transition-all ${match.activeView === 'full_time' && match.graphicsVisible ? 'border-green-500 bg-green-50 text-green-700 shadow-inner' : 'border-transparent bg-slate-50'}`}>Full Time Result {match.activeView === 'full_time' && match.graphicsVisible ? '(ON)' : ''}</button>
-                                    <button onClick={() => updateMatch({ setsVisible: !match.setsVisible })} className={`w-full p-3 mt-2 rounded font-bold border-2 flex items-center justify-between ${match.setsVisible ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-400'}`}><span>Sets Score Display</span>{match.setsVisible ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}</button>
+                                    <button onClick={() => toggleView('standings')} className={`w-full p-3 rounded font-bold border-2 transition-all ${match.activeView === 'standings' && match.graphicsVisible ? 'border-green-500 bg-green-50 text-green-700 shadow-inner' : 'border-transparent bg-slate-50'}`}>Live Standings {match.activeView === 'standings' && match.graphicsVisible ? '(ON)' : ''}</button>
                                 </div>
                             </div>
 
@@ -1446,6 +1465,7 @@ function TeamController({ name, data, serving, onScore, onSet, onColor, onTimeou
 function BroadcastOverlay({ matchId }) {
     const { matches, teams } = useVolleyballData();
     const matchList = Array.isArray(matches) ? matches : [];
+    const teamList = Array.isArray(teams) ? teams : [];
     const match = matchList.find(m => m.id === matchId);
     const [introMode, setIntroMode] = useState(true);
     const [sponsorIdx, setSponsorIdx] = useState(0);
@@ -1463,6 +1483,50 @@ function BroadcastOverlay({ matchId }) {
             roster: latest.roster
         };
     };
+
+    // --- Standings Calculation Logic ---
+    const calculateStandings = () => {
+        const stats = {};
+        teamList.forEach(t => {
+            stats[t.id] = {
+                ...t,
+                played: 0, won: 0, lost: 0, points: 0,
+                setsWon: 0, setsLost: 0,
+                pointsWon: 0, pointsLost: 0
+            };
+        });
+
+        matchList.filter(m => m.status === 'Finished').forEach(m => {
+            const tA = stats[m.teamA.id];
+            const tB = stats[m.teamB.id];
+
+            if (!tA || !tB) return;
+
+            tA.played++; tB.played++;
+            tA.setsWon += m.teamA.sets; tA.setsLost += m.teamB.sets;
+            tB.setsWon += m.teamB.sets; tB.setsLost += m.teamA.sets;
+
+            if (m.teamA.sets > m.teamB.sets) {
+                tA.won++; tB.lost++;
+                if (m.teamB.sets === 2) { tA.points += 2; tB.points += 1; }
+                else { tA.points += 3; tB.points += 0; }
+            } else {
+                tB.won++; tA.lost++;
+                if (m.teamA.sets === 2) { tB.points += 2; tA.points += 1; }
+                else { tB.points += 3; tA.points += 0; }
+            }
+        });
+
+        return Object.values(stats).sort((a, b) => {
+            if (b.points !== a.points) return b.points - a.points;
+            if (b.won !== a.won) return b.won - a.won;
+            const setRatioA = a.setsLost === 0 ? 100 : a.setsWon / a.setsLost;
+            const setRatioB = b.setsLost === 0 ? 100 : b.setsWon / b.setsLost;
+            return setRatioB - setRatioA;
+        });
+    };
+
+    const standings = calculateStandings();
 
     // Intro Sequence Effect
     useEffect(() => {
@@ -1546,6 +1610,67 @@ function BroadcastOverlay({ matchId }) {
 
     return (
         <div className="w-[1920px] h-[1080px] relative overflow-hidden font-sans bg-transparent">
+
+            {/* --- LIVE STANDINGS (CENTER) --- */}
+            {show && match.activeView === 'standings' && (
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50">
+                    {/* Container with "Nice Animation" (Slide Up + Fade + Scale) */}
+                    <div className="flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.6)] border-2 border-white/20 rounded-xl overflow-hidden bg-slate-900/95 backdrop-blur-xl w-[1000px] animate-in slide-in-from-bottom-12 zoom-in-95 fade-in duration-700 ease-out">
+                         {/* Header */}
+                        <div className="bg-[#2F36CF] w-full h-24 flex justify-between items-center px-6 border-b border-white/10 relative overflow-hidden">
+                             {/* Gloss effect */}
+                             <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent"></div>
+                             
+                             <div className="flex items-center gap-6 z-10">
+                                <img src="/img/ledlogo.png" className="h-16 w-auto object-contain drop-shadow-md" onError={(e) => e.target.style.display = 'none'} />
+                                <h2 className="text-4xl font-black text-white uppercase italic tracking-wider drop-shadow-md">Pool Standings</h2>
+                             </div>
+                             <div className="text-xl font-bold text-white/80 tracking-widest uppercase z-10">Live Update</div>
+                        </div>
+
+                        {/* Table Header */}
+                        <div className="grid grid-cols-12 bg-white text-[#2F36CF] text-xl font-black uppercase tracking-wider py-4 border-b border-slate-200">
+                            <div className="col-span-1 text-center">Pos</div>
+                            <div className="col-span-5 pl-8">Team</div>
+                            <div className="col-span-1 text-center">P</div>
+                            <div className="col-span-1 text-center">W</div>
+                            <div className="col-span-1 text-center">L</div>
+                            <div className="col-span-3 text-center pr-6">Points</div>
+                        </div>
+
+                        {/* Rows */}
+                        <div className="flex flex-col">
+                            {standings.map((t, i) => {
+                                // Highlight Top 2 Logic
+                                const isTopTwo = i < 2; 
+                                return (
+                                <div key={t.id} className={`grid grid-cols-12 items-center py-4 border-b border-white/5 text-white transition-all duration-500 relative overflow-hidden ${isTopTwo ? 'bg-gradient-to-r from-yellow-500/20 to-transparent' : 'even:bg-white/5'}`}>
+                                    
+                                    {/* Top 2 Highlight Bar */}
+                                    {isTopTwo && <div className="absolute left-0 top-0 bottom-0 w-1 bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.8)]"></div>}
+
+                                    <div className="col-span-1 flex justify-center">
+                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-black text-xl shadow-lg border border-white/20 ${isTopTwo ? 'bg-yellow-400 text-black scale-110' : 'bg-[#2F36CF] text-white'}`}>
+                                            {i+1}
+                                        </div>
+                                    </div>
+                                    <div className="col-span-5 pl-8 flex items-center gap-4">
+                                        {t.flag && <img src={t.flag} className="w-12 h-8 object-cover rounded shadow-md border border-white/10"/>}
+                                        <span className={`text-2xl font-bold uppercase tracking-tight ${isTopTwo ? 'text-yellow-400 drop-shadow-sm' : 'text-white'}`}>{t.name}</span>
+                                        {isTopTwo && <div className="text-[10px] font-black bg-yellow-400 text-black px-2 py-0.5 rounded uppercase tracking-wider">Qualified</div>}
+                                    </div>
+                                    <div className="col-span-1 text-center text-2xl font-bold text-slate-400">{t.played}</div>
+                                    <div className="col-span-1 text-center text-2xl font-bold text-green-400">{t.won}</div>
+                                    <div className="col-span-1 text-center text-2xl font-bold text-red-400">{t.lost}</div>
+                                    <div className="col-span-3 text-center pr-6">
+                                         <span className={`text-4xl font-black drop-shadow-[0_0_10px_rgba(255,255,255,0.3)] ${isTopTwo ? 'text-yellow-400 scale-110 inline-block' : 'text-white'}`}>{t.points}</span>
+                                    </div>
+                                </div>
+                            )})}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* --- MATCH SUMMARY (TOP LEFT) --- */}
             {show && match.activeView === 'summary' && (
