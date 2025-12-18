@@ -1623,9 +1623,9 @@ function BroadcastOverlay({ matchId }) {
                              
                              <div className="flex items-center gap-6 z-10">
                                 <img src="/img/ledlogo.png" className="h-16 w-auto object-contain drop-shadow-md" onError={(e) => e.target.style.display = 'none'} />
-                                <h2 className="text-4xl font-black text-white uppercase italic tracking-wider drop-shadow-md">Pool Standings</h2>
+                                <h2 className="text-4xl font-black text-white uppercase italic tracking-wider drop-shadow-md">STANDINGS</h2>
                              </div>
-                             <div className="text-xl font-bold text-white/80 tracking-widest uppercase z-10">Live Update</div>
+                             <div className="text-xl font-bold text-white/80 tracking-widest uppercase z-10"></div>
                         </div>
 
                         {/* Table Header */}
@@ -1647,23 +1647,23 @@ function BroadcastOverlay({ matchId }) {
                                 <div key={t.id} className={`grid grid-cols-12 items-center py-4 border-b border-white/5 text-white transition-all duration-500 relative overflow-hidden ${isTopTwo ? 'bg-gradient-to-r from-yellow-500/20 to-transparent' : 'even:bg-white/5'}`}>
                                     
                                     {/* Top 2 Highlight Bar */}
-                                    {isTopTwo && <div className="absolute left-0 top-0 bottom-0 w-1 bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.8)]"></div>}
+                                    {isTopTwo && <div className="absolute left-0 top-0 bottom-0 w-1 bg-orange-600 shadow-[0_0_10px_rgba(250,204,21,0.8)]"></div>}
 
                                     <div className="col-span-1 flex justify-center">
-                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-black text-xl shadow-lg border border-white/20 ${isTopTwo ? 'bg-yellow-400 text-black scale-110' : 'bg-[#2F36CF] text-white'}`}>
+                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-black text-xl shadow-lg border border-white/20 ${isTopTwo ? 'bg-orange-600 text-black scale-110' : 'bg-[#2F36CF] text-white'}`}>
                                             {i+1}
                                         </div>
                                     </div>
                                     <div className="col-span-5 pl-8 flex items-center gap-4">
                                         {t.flag && <img src={t.flag} className="w-12 h-8 object-cover rounded shadow-md border border-white/10"/>}
-                                        <span className={`text-2xl font-bold uppercase tracking-tight ${isTopTwo ? 'text-yellow-400 drop-shadow-sm' : 'text-white'}`}>{t.name}</span>
-                                        {isTopTwo && <div className="text-[10px] font-black bg-yellow-400 text-black px-2 py-0.5 rounded uppercase tracking-wider">Qualified</div>}
+                                        <span className={`text-2xl font-bold uppercase tracking-tight ${isTopTwo ? 'text-orange-600 drop-shadow-sm' : 'text-white'}`}>{t.name}</span>
+                               
                                     </div>
                                     <div className="col-span-1 text-center text-2xl font-bold text-slate-400">{t.played}</div>
                                     <div className="col-span-1 text-center text-2xl font-bold text-green-400">{t.won}</div>
                                     <div className="col-span-1 text-center text-2xl font-bold text-red-400">{t.lost}</div>
                                     <div className="col-span-3 text-center pr-6">
-                                         <span className={`text-4xl font-black drop-shadow-[0_0_10px_rgba(255,255,255,0.3)] ${isTopTwo ? 'text-yellow-400 scale-110 inline-block' : 'text-white'}`}>{t.points}</span>
+                                         <span className={`text-4xl font-black drop-shadow-[0_0_10px_rgba(255,255,255,0.3)] ${isTopTwo ? 'text-orange-600 scale-110 inline-block' : 'text-white'}`}>{t.points}</span>
                                     </div>
                                 </div>
                             )})}
@@ -1777,9 +1777,9 @@ function BroadcastOverlay({ matchId }) {
                         return (
                             <>
                                 {/* --- PLAYER OVERLAY (LEFT)*/}
-                                <div className={`absolute left-0 bottom-full h-24 flex items-center mb-0 transition-all duration-700 ease-in-out z-[100] overflow-hidden ${isLeftPlayer && !isFullTime ? 'w-[356px] opacity-100' : 'w-0 opacity-0'}`}>
+                                <div className={`absolute left-0 bottom-full h-24 flex items-center mb-0 transition-all duration-700 ease-in-out z-[100] overflow-hidden ${isLeftPlayer && !isFullTime ? 'w-[396px] opacity-100' : 'w-0 opacity-0'}`}>
                                     {activeP && isLeftPlayer && (
-                                        <div className="w-[356px] h-24 bg-[#2F36CF] text-white flex items-center relative px-6 border-r-2 border-white/10 shadow-xl">
+                                        <div className="w-[396px] h-24 bg-[#2F36CF] text-white flex items-center relative px-6 border-r-2 border-white/10 shadow-xl">
                                             <div className="flex-1 flex items-center justify-between gap-4">
                                                 <span className="text-5xl font-black text-white">{activeP.number}</span>
                                                 <div className="text-right overflow-hidden">
@@ -1794,13 +1794,13 @@ function BroadcastOverlay({ matchId }) {
                                 {/* LEFT SIDE GROUP */}
                                 <div className="flex items-center z-10 relative">
                                     {topLabelL && !introMode && !isLeftPlayer && !isFullTime && (
-                                        <div className={`absolute -top-8 left-0 h-8 flex items-center justify-center text-white text-sm font-black tracking-wider uppercase z-30 transition-all duration-300 w-[356px] shadow-lg ${topLabelL.className}`}>
+                                        <div className={`absolute -top-8 left-0 h-8 flex items-center justify-center text-white text-sm font-black tracking-wider uppercase z-30 transition-all duration-300 w-[396px] shadow-lg ${topLabelL.className}`}>
                                             {topLabelL.text}
                                         </div>
                                     )}
 
-                                    {/* Name Bar (Outer) */}
-                                    <div style={{ backgroundColor: left.color, width: isFullTime ? '550px' : (introMode ? '600px' : '260px') }} className="h-24 transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] flex items-center justify-center relative z-0 shadow-lg overflow-hidden">
+                                    {/* Name Bar (Outer) - UPDATED WIDTH (300px default) */}
+                                    <div style={{ backgroundColor: left.color, width: isFullTime ? '550px' : (introMode ? '600px' : '300px') }} className="h-24 transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] flex items-center justify-center relative z-0 shadow-lg overflow-hidden">
                                         <span className="font-black uppercase whitespace-nowrap transition-all duration-500 text-5xl" style={{ color: getTextColor(left.color) }}>
                                             {/* Show Full Name in Full Time or Intro, otherwise Short Code */}
                                             {(introMode || isFullTime) ? left.name : (left.country || left.name.substring(0, 3))}
@@ -1860,13 +1860,13 @@ function BroadcastOverlay({ matchId }) {
                                 <div className="flex items-center z-10 flex-row-reverse relative">
 
                                     {topLabelR && !introMode && !isRightPlayer && !isFullTime && (
-                                        <div className={`absolute -top-8 right-0 h-8 flex items-center justify-center text-white text-sm font-black tracking-wider uppercase z-30 transition-all duration-300 w-[356px] shadow-lg ${topLabelR.className}`}>
+                                        <div className={`absolute -top-8 right-0 h-8 flex items-center justify-center text-white text-sm font-black tracking-wider uppercase z-30 transition-all duration-300 w-[396px] shadow-lg ${topLabelR.className}`}>
                                             {topLabelR.text}
                                         </div>
                                     )}
 
-                                    {/* Name Bar (Outer) */}
-                                    <div style={{ backgroundColor: right.color, width: isFullTime ? '550px' : (introMode ? '600px' : '260px') }} className="h-24 transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] flex items-center justify-center relative z-0 shadow-lg overflow-hidden">
+                                    {/* Name Bar (Outer) - UPDATED WIDTH (300px default) */}
+                                    <div style={{ backgroundColor: right.color, width: isFullTime ? '550px' : (introMode ? '600px' : '300px') }} className="h-24 transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] flex items-center justify-center relative z-0 shadow-lg overflow-hidden">
                                         <span className="font-black uppercase whitespace-nowrap transition-all duration-500 text-5xl" style={{ color: getTextColor(right.color) }}>
                                             {(introMode || isFullTime) ? right.name : (right.country || right.name.substring(0, 3))}
                                         </span>
@@ -1897,9 +1897,9 @@ function BroadcastOverlay({ matchId }) {
                                 </div>
 
                                 {/* --- PLAYER OVERLAY (RIGHT) - ABSOLUTE --- */}
-                                <div className={`absolute right-0 bottom-full h-24 flex items-center mb-0 transition-all duration-700 ease-in-out z-[100] overflow-hidden ${isRightPlayer && !isFullTime ? 'w-[356px] opacity-100' : 'w-0 opacity-0'}`}>
+                                <div className={`absolute right-0 bottom-full h-24 flex items-center mb-0 transition-all duration-700 ease-in-out z-[100] overflow-hidden ${isRightPlayer && !isFullTime ? 'w-[396px] opacity-100' : 'w-0 opacity-0'}`}>
                                     {activeP && isRightPlayer && (
-                                        <div className="w-[356px] h-24 bg-[#2F36CF] text-white flex items-center relative px-6 border-l-2 border-white/10 flex-row-reverse shadow-xl">
+                                        <div className="w-[396px] h-24 bg-[#2F36CF] text-white flex items-center relative px-6 border-l-2 border-white/10 flex-row-reverse shadow-xl">
                                             <div className="flex-1 flex items-center justify-between flex-row-reverse gap-4">
                                                 <span className="text-5xl font-black text-white">{activeP.number}</span>
                                                 <div className="text-left overflow-hidden">
@@ -2001,16 +2001,23 @@ function LineupDisplay({ team, ids, step }) {
                     <div className="w-[40%] h-full relative">
                         {featuredPlayer && (
                             <div key={featuredPlayer.id} className="absolute inset-0 animate-slide-in-left">
-                                {/* REMOVED: Global Gradient div was here */}
-
+                                
                                 {/* Big Number - Background Decoration - Scaled Up */}
-                                {/* UPDATED: Increased opacity from text-white/5 to text-white/20 */}
                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[500px] font-black text-white/20 select-none leading-none z-0">
                                     {featuredPlayer.number}
                                 </div>
                                 <div className="absolute bottom-60 left-52 z-20 flex flex-col items-center">
 
                                     <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[700px] h-[900px] flex items-end justify-center -z-10">
+                                        
+                                        {/* UPDATED: Gradient Width adjusted to match Name Bar (approx 350px) */}
+                                        <div 
+                                            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[380px] h-2/3 -z-20 opacity-60"
+                                            style={{
+                                                background: `radial-gradient(circle at bottom, ${team.color || '#ea580c'} 0%, transparent 70%)`
+                                            }}
+                                        ></div>
+
                                         {isVideo(featuredPlayer.photo) ? (
                                             <video
                                                 src={featuredPlayer.photo}
@@ -2024,27 +2031,16 @@ function LineupDisplay({ team, ids, step }) {
                                         ) : (
                                             <User className="h-1/2 w-1/2 text-white/10" />
                                         )}
-
-                                        {/* REMOVED: Old wide gradient was here */}
                                     </div>
 
                                     {/* Name Bar */}
-                                    {/* UPDATED: Added relative positioning to contain the absolute gradient */}
-                                    <div className="transform -skew-x-12 inline-block px-6 py-3 shadow-xl border-l-4 border-white/20 relative" style={{ backgroundColor: team.color || '#333' }}>
+                                    <div className="transform -skew-x-12 inline-block px-6 py-3 shadow-xl border-l-4 border-white/20 relative" style={{ backgroundColor: team.color || '#333', minWidth: '300px' }}>
+                                        
+                                        {/* Removed the front-facing gradient that was here */}
 
-                                        {/* NEW: Gradient extending upwards from Name Bar */}
-                                        {/* Constrained to width of name bar, small height (h-32) */}
-                                        <div
-                                            className="absolute bottom-full left-0 w-full h-32 -mb-1"
-                                            style={{
-                                                background: `linear-gradient(to top, ${team.color || '#ea580c'} 0%, transparent 100%)`,
-                                                opacity: 0.8
-                                            }}
-                                        ></div>
-
-                                        <div className="transform skew-x-12" style={{ color: heroTextColor }}>
+                                        <div className="transform skew-x-12 text-center" style={{ color: heroTextColor }}>
                                             <div className="font-bold uppercase tracking-widest text-xs mb-1 opacity-80">{featuredPlayer.position}</div>
-                                            <div className="flex items-end gap-3">
+                                            <div className="flex items-end justify-center gap-3">
                                                 <span className="text-6xl font-black leading-none">#{featuredPlayer.number}</span>
                                                 <span className="text-4xl font-black uppercase italic leading-none whitespace-nowrap">{featuredPlayer.name}</span>
                                             </div>
@@ -2089,18 +2085,27 @@ function LineupDisplay({ team, ids, step }) {
                         {historyPlayers.map((p) => (
                             <div key={p.id} className="relative bg-slate-900/80 rounded-lg overflow-hidden border border-white/10 shadow-2xl group flex flex-col h-full">
 
-                                {/* Player Image/Video Container */}
-                                <div className="absolute inset-0 z-0">
+                                {/* Player Image/Video Container - UPDATED to match Hero Style (Backlight + Cutout) */}
+                                <div className="absolute inset-0 z-0 flex items-end justify-center">
+                                    
+                                    {/* Backlight Gradient */}
+                                    <div 
+                                        className="absolute bottom-0 w-full h-3/4 opacity-60"
+                                        style={{
+                                            background: `radial-gradient(circle at bottom, ${team.color || '#ea580c'} 0%, transparent 70%)`
+                                        }}
+                                    ></div>
+
                                     {isVideo(p.photo) ? (
                                         <video
                                             src={p.photo}
-                                            autoPlay muted loop playsInline
-                                            className="h-full w-full object-cover object-top"
+                                            autoPlay muted playsInline // Removed loop
+                                            className="h-[95%] w-full object-contain object-bottom drop-shadow-lg"
                                         />
                                     ) : p.photo ? (
                                         <img
                                             src={p.photo}
-                                            className="h-full w-full object-cover object-top"
+                                            className="h-[95%] w-full object-contain object-bottom drop-shadow-lg"
                                         />
                                     ) : (
                                         <div className="h-full w-full flex items-center justify-center bg-white/5">
@@ -2116,9 +2121,9 @@ function LineupDisplay({ team, ids, step }) {
 
                                 {/* Info Bar Overlay (Bottom) - UPDATED: Uses Team Color Gradient & Increased Height */}
                                 <div
-                                    className="absolute bottom-0 left-0 w-full p-4 pt-44 z-20"
+                                    className="absolute bottom-0 left-0 w-full p-4 pt-12 z-20"
                                     style={{
-                                        background: `linear-gradient(to top, ${team.color || '#ea580c'} 0%, ${team.color || '#ea580c'}E6 50%, transparent 100%)`
+                                        background: `linear-gradient(to top, ${team.color || '#ea580c'} 0%, ${team.color || '#ea580c'}E6 70%, transparent 100%)`
                                     }}
                                 >
                                     <div className="flex items-center gap-2 mb-1">
@@ -2127,7 +2132,7 @@ function LineupDisplay({ team, ids, step }) {
                                         </div>
                                         <div className="text-white font-black text-xl">#{p.number}</div>
                                     </div>
-                                    <div className="text-xl font-bold text-white uppercase leading-none truncate">{p.name}</div>
+                                    <div className="text-xl font-bold text-white uppercase leading-none truncate" style={{ color: heroTextColor }}>{p.name}</div>
                                 </div>
                             </div>
                         ))}
