@@ -2492,7 +2492,7 @@ function StadiumView({ matchId }) {
     // --- MODE DETECTION ---
     const isSquare = match.ledAspectRatio === '1:1';
 
-    // --- 2. SUBSTITUTION OVERLAY RENDERER (Updated for Multiline Names) ---
+    // --- 2. SUBSTITUTION OVERLAY RENDERER (Updated for VISIBILITY) ---
     const sData = match.subData || {};
     const renderSubOverlay = (team) => {
         if (!sData.visible || sData.teamId !== team.id) return null;
@@ -2516,23 +2516,33 @@ function StadiumView({ matchId }) {
                 </div>
 
                 {/* IN (Green) */}
-                <div className="flex-1 bg-green-600 flex items-center px-6 border-b border-black/20">
-                    <div className="flex flex-col flex-1 min-w-0 mr-4">
-                        <span className="text-xl font-bold uppercase text-green-200 flex items-center gap-2 mb-1"><ArrowUpCircle size={24} /> IN</span>
-                        {/* WRAP TEXT: removed truncate, added leading-tight & break-words */}
-                        <span className="text-4xl font-black uppercase leading-tight break-words">{pIn.name}</span>
+                <div className="flex-1 bg-green-700 flex items-center px-4 border-b border-black/20">
+                    <div className="flex flex-col flex-1 min-w-0 mr-2 justify-center h-full">
+                        {/* HUGE INDICATOR ROW */}
+                        <div className="flex items-center gap-3 mb-1">
+                            <ArrowUpCircle size={50} className="text-white" />
+                            <span className="text-5xl font-black uppercase text-white tracking-widest drop-shadow-md">IN</span>
+                        </div>
+                        {/* Name */}
+                        <span className="text-4xl font-black uppercase leading-tight text-green-100 break-words drop-shadow-sm">{pIn.name}</span>
                     </div>
-                    <span className="text-[100px] font-black flex-shrink-0 tabular-nums">{pIn.number}</span>
+                    {/* Number */}
+                    <span className="text-[100px] font-black flex-shrink-0 tabular-nums text-white drop-shadow-lg">{pIn.number}</span>
                 </div>
 
                 {/* OUT (Red) */}
-                <div className="flex-1 bg-red-600 flex items-center px-6">
-                    <div className="flex flex-col flex-1 min-w-0 mr-4">
-                        <span className="text-xl font-bold uppercase text-red-200 flex items-center gap-2 mb-1"><ArrowDownCircle size={24} /> OUT</span>
-                        {/* WRAP TEXT: removed truncate, added leading-tight & break-words */}
-                        <span className="text-4xl font-black uppercase leading-tight break-words">{pOut.name}</span>
+                <div className="flex-1 bg-red-700 flex items-center px-4">
+                    <div className="flex flex-col flex-1 min-w-0 mr-2 justify-center h-full">
+                        {/* HUGE INDICATOR ROW */}
+                        <div className="flex items-center gap-3 mb-1">
+                            <ArrowDownCircle size={50} className="text-white" />
+                            <span className="text-5xl font-black uppercase text-white tracking-widest drop-shadow-md">OUT</span>
+                        </div>
+                        {/* Name */}
+                        <span className="text-4xl font-black uppercase leading-tight text-red-100 break-words drop-shadow-sm">{pOut.name}</span>
                     </div>
-                    <span className="text-[100px] font-black text-white/80 flex-shrink-0 tabular-nums">{pOut.number}</span>
+                    {/* Number */}
+                    <span className="text-[100px] font-black text-white/90 flex-shrink-0 tabular-nums drop-shadow-lg">{pOut.number}</span>
                 </div>
             </div>
         );
