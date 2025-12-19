@@ -2443,7 +2443,7 @@ function StadiumView({ matchId }) {
     const match = matchList.find(m => m.id === matchId);
     const [sponsorIdx, setSponsorIdx] = useState(0);
 
-    // --- 1. URL RESOLVER (Ensures flags/images load correctly) ---
+    // --- 1. URL RESOLVER ---
     const serverUrl = window.localStorage.getItem('volleyball_server_url') || 'http://localhost:3001';
     const resolveUrl = (url) => {
         if (!url) return null;
@@ -2492,10 +2492,9 @@ function StadiumView({ matchId }) {
     // --- MODE DETECTION ---
     const isSquare = match.ledAspectRatio === '1:1';
 
-    // --- 2. SUBSTITUTION OVERLAY RENDERER ---
+    // --- 2. SUBSTITUTION OVERLAY RENDERER (Updated for Multiline Names) ---
     const sData = match.subData || {};
     const renderSubOverlay = (team) => {
-        // Only show if visible AND matches this team ID
         if (!sData.visible || sData.teamId !== team.id) return null;
 
         const pIn = team.roster?.find(p => p.id === sData.inId);
@@ -2507,31 +2506,33 @@ function StadiumView({ matchId }) {
             <div className="absolute inset-0 z-50 flex flex-col animate-in zoom-in duration-300 bg-slate-900 border-4 border-yellow-400">
                 {/* HEADER: Flag & Name */}
                 <div className="h-[20%] bg-white flex items-center gap-4 px-4 border-b-4 border-slate-900">
-                    <div className="h-16 w-24 bg-black/10 rounded border border-black/20 flex items-center justify-center overflow-hidden">
+                    <div className="h-16 w-24 bg-black/10 rounded border border-black/20 flex items-center justify-center overflow-hidden flex-shrink-0">
                         {team.flag ? <img src={resolveUrl(team.flag)} className="w-full h-full object-cover" /> : <Flag className="text-black" />}
                     </div>
-                    <div className="flex flex-col justify-center">
+                    <div className="flex flex-col justify-center min-w-0 flex-1">
                         <span className="text-slate-500 text-xs font-bold uppercase leading-none mb-1">SUBSTITUTION</span>
                         <span className="text-4xl font-black uppercase text-slate-900 leading-none truncate w-full">{team.name}</span>
                     </div>
                 </div>
 
                 {/* IN (Green) */}
-                <div className="flex-1 bg-green-600 flex items-center justify-between px-6 border-b border-black/20">
-                    <div className="flex flex-col">
-                        <span className="text-xl font-bold uppercase text-green-200 flex items-center gap-2"><ArrowUpCircle size={24} /> IN</span>
-                        <span className="text-4xl font-black uppercase leading-none truncate w-48 mt-1">{pIn.name}</span>
+                <div className="flex-1 bg-green-600 flex items-center px-6 border-b border-black/20">
+                    <div className="flex flex-col flex-1 min-w-0 mr-4">
+                        <span className="text-xl font-bold uppercase text-green-200 flex items-center gap-2 mb-1"><ArrowUpCircle size={24} /> IN</span>
+                        {/* WRAP TEXT: removed truncate, added leading-tight & break-words */}
+                        <span className="text-4xl font-black uppercase leading-tight break-words">{pIn.name}</span>
                     </div>
-                    <span className="text-[120px] font-black">{pIn.number}</span>
+                    <span className="text-[100px] font-black flex-shrink-0 tabular-nums">{pIn.number}</span>
                 </div>
 
                 {/* OUT (Red) */}
-                <div className="flex-1 bg-red-600 flex items-center justify-between px-6">
-                    <div className="flex flex-col">
-                        <span className="text-xl font-bold uppercase text-red-200 flex items-center gap-2"><ArrowDownCircle size={24} /> OUT</span>
-                        <span className="text-4xl font-black uppercase leading-none truncate w-48 mt-1">{pOut.name}</span>
+                <div className="flex-1 bg-red-600 flex items-center px-6">
+                    <div className="flex flex-col flex-1 min-w-0 mr-4">
+                        <span className="text-xl font-bold uppercase text-red-200 flex items-center gap-2 mb-1"><ArrowDownCircle size={24} /> OUT</span>
+                        {/* WRAP TEXT: removed truncate, added leading-tight & break-words */}
+                        <span className="text-4xl font-black uppercase leading-tight break-words">{pOut.name}</span>
                     </div>
-                    <span className="text-[120px] font-black text-white/80">{pOut.number}</span>
+                    <span className="text-[100px] font-black text-white/80 flex-shrink-0 tabular-nums">{pOut.number}</span>
                 </div>
             </div>
         );
@@ -2570,26 +2571,22 @@ function StadiumView({ matchId }) {
 
                             {/* LEFT TEAM CARD */}
                             <div className="flex-1 bg-slate-900 rounded-xl border-l-8 border-t border-b border-r border-slate-700 flex flex-col items-center p-2 relative shadow-lg overflow-hidden" style={{ borderLeftColor: left.color }}>
-                                {/* SUB OVERLAY INJECTION */}
                                 {renderSubOverlay(left)}
 
                                 {sL && <div className="absolute left-2 top-2 z-20"><img src="/img/volleyball.png" className="w-8 h-8 animate-pulse" /></div>}
 
-                                {/* Flag */}
                                 <div className="h-[30%] w-full flex justify-center mt-2">
                                     <div className="aspect-video h-full bg-black border border-slate-600 shadow relative">
                                         {left.flag ? <img src={resolveUrl(left.flag)} className="w-full h-full object-cover" /> : <Flag className="text-slate-600 m-auto" />}
                                     </div>
                                 </div>
 
-                                {/* Name (Short Code) */}
                                 <div className="h-[20%] w-full flex items-center justify-center mt-1 bg-gradient-to-r from-transparent via-slate-800 to-transparent">
                                     <h2 className="text-[7vh] font-black uppercase text-white tracking-tighter leading-none drop-shadow-lg">
                                         {left.country || left.name.substring(0, 3).toUpperCase()}
                                     </h2>
                                 </div>
 
-                                {/* Score */}
                                 <div className="flex-1 w-full flex items-center justify-center">
                                     <span className="text-[22vh] font-black leading-none text-white tabular-nums drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">{left.score}</span>
                                 </div>
@@ -2597,26 +2594,22 @@ function StadiumView({ matchId }) {
 
                             {/* RIGHT TEAM CARD */}
                             <div className="flex-1 bg-slate-900 rounded-xl border-l-8 border-t border-b border-r border-slate-700 flex flex-col items-center p-2 relative shadow-lg overflow-hidden" style={{ borderLeftColor: right.color }}>
-                                {/* SUB OVERLAY INJECTION */}
                                 {renderSubOverlay(right)}
 
                                 {sR && <div className="absolute left-2 top-2 z-20"><img src="/img/volleyball.png" className="w-8 h-8 animate-pulse" /></div>}
 
-                                {/* Flag */}
                                 <div className="h-[30%] w-full flex justify-center mt-2">
                                     <div className="aspect-video h-full bg-black border border-slate-600 shadow relative">
                                         {right.flag ? <img src={resolveUrl(right.flag)} className="w-full h-full object-cover" /> : <Flag className="text-slate-600 m-auto" />}
                                     </div>
                                 </div>
 
-                                {/* Name (Short Code) */}
                                 <div className="h-[20%] w-full flex items-center justify-center mt-1 bg-gradient-to-r from-transparent via-slate-800 to-transparent">
                                     <h2 className="text-[7vh] font-black uppercase text-white tracking-tighter leading-none drop-shadow-lg">
                                         {right.country || right.name.substring(0, 3).toUpperCase()}
                                     </h2>
                                 </div>
 
-                                {/* Score */}
                                 <div className="flex-1 w-full flex items-center justify-center">
                                     <span className="text-[22vh] font-black leading-none text-white tabular-nums drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">{right.score}</span>
                                 </div>
@@ -2625,7 +2618,6 @@ function StadiumView({ matchId }) {
 
                         {/* 3. HISTORY TABLE (Bottom) */}
                         <div className="h-[35%] w-full bg-slate-900 rounded-xl border border-slate-700 flex flex-col shadow-inner overflow-hidden">
-                            {/* Header */}
                             <div className="flex bg-slate-800 h-[20%] items-center border-b border-slate-700">
                                 <div className="w-24 flex items-center justify-center border-r border-slate-700">
                                     <Flag size={20} className="text-slate-500" />
@@ -2636,7 +2628,6 @@ function StadiumView({ matchId }) {
                                     </div>
                                 ))}
                             </div>
-                            {/* Row A */}
                             <div className="flex-1 flex items-center border-b border-slate-700/50">
                                 <div className="w-24 h-full p-2 flex items-center justify-center bg-black/20 border-r border-slate-700">
                                     {left.flag ? <img src={resolveUrl(left.flag)} className="w-full h-full object-contain" /> : <Flag className="text-slate-600" />}
@@ -2649,7 +2640,6 @@ function StadiumView({ matchId }) {
                                     )
                                 })}
                             </div>
-                            {/* Row B */}
                             <div className="flex-1 flex items-center">
                                 <div className="w-24 h-full p-2 flex items-center justify-center bg-black/20 border-r border-slate-700">
                                     {right.flag ? <img src={resolveUrl(right.flag)} className="w-full h-full object-contain" /> : <Flag className="text-slate-600" />}
@@ -2669,12 +2659,13 @@ function StadiumView({ matchId }) {
             ) : (
 
                 <>
+                    {/* 16:9 Layout logic remains the same, updated with new renderSubOverlay */}
                     <div className="absolute top-4 left-0 w-full flex justify-center z-20">
                         <img src={match.tournamentLogo || "/img/cava_logo.png"} className="h-48 object-contain drop-shadow-xl" onError={(e) => e.target.style.display = 'none'} />
                     </div>
                     <div className="relative z-10 flex-1 flex items-stretch justify-between gap-4 px-8 pt-24">
                         <div className="flex-1 bg-slate-900/50 rounded-3xl border-4 border-slate-700 flex flex-col items-center justify-between p-6 shadow-[0_0_50px_rgba(0,0,0,0.5)] backdrop-blur-sm relative overflow-hidden">
-                            {renderSubOverlay(left)} {/* Sub Overlay */}
+                            {renderSubOverlay(left)}
                             <div className="w-full flex flex-col items-center gap-2">
                                 <div className="h-40 w-64 bg-black rounded-xl overflow-hidden border-4 border-slate-600 shadow-lg relative">{left.flag ? <img src={resolveUrl(left.flag)} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-700"><Flag size={64} /></div>}</div>
                                 <h2 className="w-full text-center text-6xl font-black uppercase text-white tracking-tight leading-tight line-clamp-2 drop-shadow-lg" style={{ textShadow: '0 4px 8px rgba(0,0,0,0.8)' }}>{left.name}</h2>
@@ -2695,7 +2686,7 @@ function StadiumView({ matchId }) {
                             )}
                         </div>
                         <div className="flex-1 bg-slate-900/50 rounded-3xl border-4 border-slate-700 flex flex-col items-center justify-between p-6 shadow-[0_0_50px_rgba(0,0,0,0.5)] backdrop-blur-sm relative overflow-hidden">
-                            {renderSubOverlay(right)} {/* Sub Overlay */}
+                            {renderSubOverlay(right)}
                             <div className="w-full flex flex-col items-center gap-2">
                                 <div className="h-40 w-64 bg-black rounded-xl overflow-hidden border-4 border-slate-600 shadow-lg relative">{right.flag ? <img src={resolveUrl(right.flag)} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-700"><Flag size={64} /></div>}</div>
                                 <h2 className="w-full text-center text-6xl font-black uppercase text-white tracking-tight leading-tight line-clamp-2 drop-shadow-lg" style={{ textShadow: '0 4px 8px rgba(0,0,0,0.8)' }}>{right.name}</h2>
