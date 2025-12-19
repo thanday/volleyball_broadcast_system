@@ -6,7 +6,7 @@ import {
     FileJson, CheckCircle, History, Palette, Timer, Maximize2, Eye,
     EyeOff, Shield, UserCheck, Play, SkipForward, Wifi, WifiOff, Server as ServerIcon, Globe,
     Link as LinkIcon, Copy, ToggleLeft, ToggleRight, List, RotateCcw,
-    Video as VideoIcon, DollarSign, Edit, Share2, Medal, BarChart3, AlertTriangle, RefreshCw
+    Video as VideoIcon, DollarSign, Edit, Share2, Medal, BarChart3, AlertTriangle, RefreshCw, ArrowUpCircle, ArrowDownCircle, Repeat
 } from 'lucide-react';
 
 const GlobalStyles = () => (
@@ -95,11 +95,11 @@ function useSyncedState(key, defaultValue) {
     const [value, setValue] = useState(defaultValue);
     const [status, setStatus] = useState('disconnected');
     const [isSocketLoaded, setIsSocketLoaded] = useState(false);
-    
+
     const socketRef = useRef(null);
-    const ignoreRemoteRef = useRef(false); 
-    const timeoutRef = useRef(null); 
-    const emitDebounceRef = useRef(null); 
+    const ignoreRemoteRef = useRef(false);
+    const timeoutRef = useRef(null);
+    const emitDebounceRef = useRef(null);
 
     const [serverUrl, setServerUrl] = useState(() => {
         const params = new URLSearchParams(window.location.search);
@@ -135,7 +135,7 @@ function useSyncedState(key, defaultValue) {
                     reconnectionDelay: 1000,
                     transports: ['websocket'], // Force websocket
                     upgrade: false,
-                    timeout: 60000 
+                    timeout: 60000
                 });
             } catch (e) {
                 console.error("Socket init failed", e);
@@ -189,17 +189,17 @@ function useSyncedState(key, defaultValue) {
     const setSharedValue = (newValue) => {
         // 1. Optimistic Update
         setValue(newValue);
-        
+
         // 2. Set Grace Period
         ignoreRemoteRef.current = true;
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        timeoutRef.current = setTimeout(() => { 
-            ignoreRemoteRef.current = false; 
-        }, 2000); 
+        timeoutRef.current = setTimeout(() => {
+            ignoreRemoteRef.current = false;
+        }, 2000);
 
         // 3. Debounced Emit
         if (emitDebounceRef.current) clearTimeout(emitDebounceRef.current);
-        
+
         emitDebounceRef.current = setTimeout(() => {
             if (socketRef.current && socketRef.current.connected) {
                 const payload = { key, value: newValue };
@@ -209,11 +209,11 @@ function useSyncedState(key, defaultValue) {
                 console.warn("Socket disconnected. Reconnecting...");
                 if (socketRef.current) socketRef.current.connect();
                 setTimeout(() => {
-                   if(socketRef.current?.connected) {
-                       socketRef.current.emit('update_data', { key, value: newValue });
-                   } else {
-                       alert(`⚠️ Connection Failed. Data for [${key}] saved LOCALLY only (until refresh). Check Server Console.`);
-                   }
+                    if (socketRef.current?.connected) {
+                        socketRef.current.emit('update_data', { key, value: newValue });
+                    } else {
+                        alert(`⚠️ Connection Failed. Data for [${key}] saved LOCALLY only (until refresh). Check Server Console.`);
+                    }
                 }, 1000);
             }
         }, 200); // Increased debounce slightly
@@ -224,44 +224,44 @@ function useSyncedState(key, defaultValue) {
 
 // --- UPDATED File/Image Processing (Safer Limits) ---
 const processFile = (file, callback, maxWidth = 200) => {
-  if (!file) return;
-  
-  // Hard limit 100MB to prevent browser crash before sending
-  if (file.size > 100 * 1024 * 1024) {
-      alert("⚠️ File too large! Please use a file under 100MB.");
-      return;
-  }
+    if (!file) return;
 
-  // Videos
-  if (file.type.startsWith('video/')) {
-      if (file.size > 20 * 1024 * 1024) {
-         if(!confirm("⚠️ Large Video Detected (>20MB).\n\nUploading this might crash the connection if the server limit isn't configured correctly.\n\nContinue?")) return;
-      }
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (e) => callback(e.target.result); 
-      return;
-  }
+    // Hard limit 100MB to prevent browser crash before sending
+    if (file.size > 100 * 1024 * 1024) {
+        alert("⚠️ File too large! Please use a file under 100MB.");
+        return;
+    }
 
-  // Images - Resized and Compressed
-  const reader = new FileReader();
-  reader.readAsDataURL(file);
-  reader.onload = (e) => {
-    const img = new Image();
-    img.src = e.target.result;
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const scale = maxWidth / img.width;
-      canvas.width = maxWidth;
-      canvas.height = img.height * scale;
-      
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      
-      // Compress to 0.6 quality JPEG
-      callback(canvas.toDataURL('image/jpeg', 0.6)); 
+    // Videos
+    if (file.type.startsWith('video/')) {
+        if (file.size > 20 * 1024 * 1024) {
+            if (!confirm("⚠️ Large Video Detected (>20MB).\n\nUploading this might crash the connection if the server limit isn't configured correctly.\n\nContinue?")) return;
+        }
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (e) => callback(e.target.result);
+        return;
+    }
+
+    // Images - Resized and Compressed
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (e) => {
+        const img = new Image();
+        img.src = e.target.result;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const scale = maxWidth / img.width;
+            canvas.width = maxWidth;
+            canvas.height = img.height * scale;
+
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            // Compress to 0.6 quality JPEG
+            callback(canvas.toDataURL('image/jpeg', 0.6));
+        };
     };
-  };
 };
 
 // --- DATA CONTEXT (GLOBAL STATE) ---
@@ -705,7 +705,7 @@ function RefereeManager({ onBack }) {
 const uploadChunkedFile = (file, onProgress) => {
     return new Promise((resolve, reject) => {
         const serverUrl = window.localStorage.getItem('volleyball_server_url') || 'http://localhost:3001';
-        
+
         if (!window.io) {
             reject("Socket.io not loaded yet");
             return;
@@ -745,7 +745,7 @@ const uploadChunkedFile = (file, onProgress) => {
             socket.disconnect();
             reject(err.message);
         });
-        
+
         const readAndSendChunk = () => {
             const reader = new FileReader();
             const slice = file.slice(offset, offset + CHUNK_SIZE);
@@ -773,7 +773,7 @@ function TeamManager({ onBack }) {
     const [isAddingPlayer, setIsAddingPlayer] = useState(false);
     const [editingPlayerId, setEditingPlayerId] = useState(null);
     const [playerForm, setPlayerForm] = useState({ name: '', number: '', position: '', photo: '' });
-    
+
     // NEW: Upload State
     const [uploadProgress, setUploadProgress] = useState(0);
     const [isUploading, setIsUploading] = useState(false);
@@ -824,7 +824,7 @@ function TeamManager({ onBack }) {
                             </div>
                             <div>
                                 <div className="flex justify-between mb-4"><h3 className="font-bold flex gap-2"><LayoutGrid size={20} /> Roster</h3><button onClick={() => { setIsAddingPlayer(true); setEditingPlayerId(null); setPlayerForm({ name: '', number: '', position: '', photo: '' }); }} className="bg-slate-800 text-white px-3 py-1 rounded text-sm flex gap-2"><UserPlus size={16} /> Add</button></div>
-                                
+
                                 {isAddingPlayer && <div className="bg-slate-50 p-4 rounded border mb-4 grid grid-cols-12 gap-2 items-end">
                                     <div className="col-span-2"><label className="text-xs">No.</label><input value={playerForm.number} onChange={e => setPlayerForm({ ...playerForm, number: e.target.value })} className="w-full border p-1 rounded" /></div>
                                     <div className="col-span-4"><label className="text-xs">Name</label><input value={playerForm.name} onChange={e => setPlayerForm({ ...playerForm, name: e.target.value })} className="w-full border p-1 rounded" /></div>
@@ -851,12 +851,12 @@ function TeamManager({ onBack }) {
                                         {/* NEW: Chunked Video Upload */}
                                         <div>
                                             <label className="text-xs font-bold block mb-1 flex items-center gap-1 text-purple-600"><VideoIcon size={12} /> Video Upload (WebM/Mov)</label>
-                                            <input 
-                                                type="file" 
-                                                accept="video/*" 
-                                                className="text-[10px] w-full" 
+                                            <input
+                                                type="file"
+                                                accept="video/*"
+                                                className="text-[10px] w-full"
                                                 disabled={isUploading}
-                                                onChange={e => handleVideoUpload(e.target.files[0])} 
+                                                onChange={e => handleVideoUpload(e.target.files[0])}
                                             />
                                             {isUploading && (
                                                 <div className="w-full bg-slate-200 rounded-full h-2 mt-1">
@@ -955,7 +955,7 @@ function Dashboard({ onControl, onOutput, onStadium, onManageTeams, onManageRefe
             setsVisible: true,
             setHistory: [],
             // UPDATED: Initialize lineups to prevent "uncontrolled input" errors
-            lineupA: [], 
+            lineupA: [],
             lineupB: [],
             lineupStep: 0,
             isSwapped: false,
@@ -1002,12 +1002,12 @@ function Dashboard({ onControl, onOutput, onStadium, onManageTeams, onManageRefe
             setMatches([]);
             setTeams([]);
             setReferees([]);
-            
+
             // 2. Clear Local Preferences
             window.localStorage.removeItem('volleyball_matches');
             window.localStorage.removeItem('volleyball_teams');
             window.localStorage.removeItem('volleyball_referees');
-            
+
             // 3. Reload
             setTimeout(() => {
                 alert("System Reset Complete.");
@@ -1310,8 +1310,8 @@ function ControlPanel({ matchId, onBack }) {
                     <button
                         onClick={cycleStatus}
                         className={`text-xs px-4 py-2 rounded font-black uppercase tracking-wider transition-all ${match.status === 'Live' ? 'bg-red-600 animate-pulse shadow-red-500/50 shadow-lg' :
-                                match.status === 'Finished' ? 'bg-slate-600 text-slate-400' :
-                                    'bg-blue-600'
+                            match.status === 'Finished' ? 'bg-slate-600 text-slate-400' :
+                                'bg-blue-600'
                             }`}
                     >
                         {match.status || 'SCHEDULED'}
@@ -1327,10 +1327,12 @@ function ControlPanel({ matchId, onBack }) {
             <div className="p-4 flex gap-4">
                 <button onClick={() => setTab('score')} className={`px-4 py-2 rounded font-bold ${tab === 'score' ? 'bg-blue-600 text-white' : 'bg-white'}`}>Scoring</button>
                 <button onClick={() => setTab('gfx')} className={`px-4 py-2 rounded font-bold ${tab === 'gfx' ? 'bg-blue-600 text-white' : 'bg-white'}`}>Graphics & Links</button>
+                <button onClick={() => setTab('subs')} className={`px-4 py-2 rounded font-bold ${tab === 'subs' ? 'bg-blue-600 text-white' : 'bg-white'}`}>Substitution</button> {/* NEW BUTTON */}
                 <button onClick={() => setTab('sponsors')} className={`px-4 py-2 rounded font-bold ${tab === 'sponsors' ? 'bg-blue-600 text-white' : 'bg-white'}`}>Sponsors</button>
             </div>
 
             <div className="flex-1 overflow-hidden flex gap-4 p-4 pt-0">
+
                 {tab === 'score' && (
                     <>
                         {/* Left Side Player List */}
@@ -1392,6 +1394,32 @@ function ControlPanel({ matchId, onBack }) {
                         </div>
                     </>
                 )}
+
+                {tab === 'subs' && (
+                    <div className="flex-1 bg-white p-6 rounded-xl border shadow-sm overflow-y-auto">
+                        <h3 className="font-bold text-xl flex items-center gap-2 mb-6"><Repeat size={24} /> Substitution Manager</h3>
+
+                        <div className="grid grid-cols-2 gap-8">
+                            {/* TEAM A (OR LEFT) */}
+                            <SubController
+                                team={left}
+                                side="left"
+                                match={match}
+                                updateMatch={updateMatch}
+                            />
+
+                            {/* TEAM B (OR RIGHT) */}
+                            <SubController
+                                team={right}
+                                side="right"
+                                match={match}
+                                updateMatch={updateMatch}
+                            />
+                        </div>
+                    </div>
+                )}
+
+
                 {tab === 'sponsors' && (
                     <div className="flex-1 bg-white p-6 rounded-xl border shadow-sm overflow-hidden flex flex-col">
                         <div className="mb-4">
@@ -1500,32 +1528,33 @@ function ControlPanel({ matchId, onBack }) {
                                     const validCount = list.filter(id => t.roster?.some(p => p.id === id)).length;
 
                                     return (
-                                    <div key={i} className="flex-1 overflow-y-auto">
-                                        <div className={`text-xs font-bold uppercase mb-2 ${i === 0 ? 'text-blue-600' : 'text-red-600'}`}>{t.name} ({validCount}/6)</div>
-                                        <div className="space-y-1">{(t.roster || []).map(p => { 
-                                            const field = i === 0 ? 'lineupA' : 'lineupB'; 
-                                            // UPDATED: Ensure checked is boolean to fix React warning
-                                            const checked = list.includes(p.id) || false; 
-                                            return (
-                                                <label key={p.id} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded border cursor-pointer">
-                                                    <input 
-                                                        type="checkbox" 
-                                                        checked={checked} 
-                                                        onChange={() => { 
-                                                            // FIX: Clean list of ghost IDs before checking limit to allow full selection
-                                                            const cleanList = list.filter(id => t.roster?.some(r => r.id === id));
-                                                            const newList = checked ? cleanList.filter(x => x !== p.id) : [...cleanList, p.id]; 
-                                                            
-                                                            if (newList.length <= 6) updateMatch({ [field]: newList }); 
-                                                        }} 
-                                                    />
-                                                    <span className="font-mono bg-slate-100 px-1 rounded text-xs">#{p.number}</span>
-                                                    <span className="text-sm font-bold">{p.name}</span>
-                                                </label> 
-                                            )
-                                        })}</div>
-                                    </div>
-                                )})}
+                                        <div key={i} className="flex-1 overflow-y-auto">
+                                            <div className={`text-xs font-bold uppercase mb-2 ${i === 0 ? 'text-blue-600' : 'text-red-600'}`}>{t.name} ({validCount}/6)</div>
+                                            <div className="space-y-1">{(t.roster || []).map(p => {
+                                                const field = i === 0 ? 'lineupA' : 'lineupB';
+                                                // UPDATED: Ensure checked is boolean to fix React warning
+                                                const checked = list.includes(p.id) || false;
+                                                return (
+                                                    <label key={p.id} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded border cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={checked}
+                                                            onChange={() => {
+                                                                // FIX: Clean list of ghost IDs before checking limit to allow full selection
+                                                                const cleanList = list.filter(id => t.roster?.some(r => r.id === id));
+                                                                const newList = checked ? cleanList.filter(x => x !== p.id) : [...cleanList, p.id];
+
+                                                                if (newList.length <= 6) updateMatch({ [field]: newList });
+                                                            }}
+                                                        />
+                                                        <span className="font-mono bg-slate-100 px-1 rounded text-xs">#{p.number}</span>
+                                                        <span className="text-sm font-bold">{p.name}</span>
+                                                    </label>
+                                                )
+                                            })}</div>
+                                        </div>
+                                    )
+                                })}
                             </div>
                         </div>
                     </div>
@@ -1724,16 +1753,16 @@ function BroadcastOverlay({ matchId }) {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50">
                     {/* Container with "Nice Animation" (Slide Up + Fade + Scale) */}
                     <div className="flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.6)] border-2 border-white/20 rounded-xl overflow-hidden bg-slate-900/95 backdrop-blur-xl w-[1000px] animate-in slide-in-from-bottom-12 zoom-in-95 fade-in duration-700 ease-out">
-                         {/* Header */}
+                        {/* Header */}
                         <div className="bg-[#2F36CF] w-full h-24 flex justify-between items-center px-6 border-b border-white/10 relative overflow-hidden">
-                             {/* Gloss effect */}
-                             <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent"></div>
-                             
-                             <div className="flex items-center gap-6 z-10">
+                            {/* Gloss effect */}
+                            <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent"></div>
+
+                            <div className="flex items-center gap-6 z-10">
                                 <img src="/img/ledlogo.png" className="h-16 w-auto object-contain drop-shadow-md" onError={(e) => e.target.style.display = 'none'} />
                                 <h2 className="text-4xl font-black text-white uppercase italic tracking-wider drop-shadow-md">STANDINGS</h2>
-                             </div>
-                             <div className="text-xl font-bold text-white/80 tracking-widest uppercase z-10"></div>
+                            </div>
+                            <div className="text-xl font-bold text-white/80 tracking-widest uppercase z-10"></div>
                         </div>
 
                         {/* Table Header */}
@@ -1750,31 +1779,32 @@ function BroadcastOverlay({ matchId }) {
                         <div className="flex flex-col">
                             {standings.map((t, i) => {
                                 // Highlight Top 2 Logic
-                                const isTopTwo = i < 0; 
+                                const isTopTwo = i < 0;
                                 return (
-                                <div key={t.id} className={`grid grid-cols-12 items-center py-4 border-b border-white/5 text-white transition-all duration-500 relative overflow-hidden ${isTopTwo ? 'bg-gradient-to-r from-yellow-500/20 to-transparent' : 'even:bg-white/5'}`}>
-                                    
-                                    {/* Top 2 Highlight Bar */}
-                                    {isTopTwo && <div className="absolute left-0 top-0 bottom-0 w-1 bg-yellow-600 shadow-[0_0_10px_rgba(250,204,21,0.8)]"></div>}
+                                    <div key={t.id} className={`grid grid-cols-12 items-center py-4 border-b border-white/5 text-white transition-all duration-500 relative overflow-hidden ${isTopTwo ? 'bg-gradient-to-r from-yellow-500/20 to-transparent' : 'even:bg-white/5'}`}>
 
-                                    <div className="col-span-1 flex justify-center">
-                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-black text-xl shadow-lg border border-white/20 ${isTopTwo ? 'bg-orange-600 text-black scale-110' : 'bg-[#2F36CF] text-white'}`}>
-                                            {i+1}
+                                        {/* Top 2 Highlight Bar */}
+                                        {isTopTwo && <div className="absolute left-0 top-0 bottom-0 w-1 bg-yellow-600 shadow-[0_0_10px_rgba(250,204,21,0.8)]"></div>}
+
+                                        <div className="col-span-1 flex justify-center">
+                                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-black text-xl shadow-lg border border-white/20 ${isTopTwo ? 'bg-orange-600 text-black scale-110' : 'bg-[#2F36CF] text-white'}`}>
+                                                {i + 1}
+                                            </div>
+                                        </div>
+                                        <div className="col-span-5 pl-8 flex items-center gap-4">
+                                            {t.flag && <img src={t.flag} className="w-12 h-8 object-cover rounded shadow-md border border-white/10" />}
+                                            <span className={`text-2xl font-bold uppercase tracking-tight ${isTopTwo ? 'text-orange-600 drop-shadow-sm' : 'text-white'}`}>{t.name}</span>
+
+                                        </div>
+                                        <div className="col-span-1 text-center text-2xl font-bold text-slate-400">{t.played}</div>
+                                        <div className="col-span-1 text-center text-2xl font-bold text-green-400">{t.won}</div>
+                                        <div className="col-span-1 text-center text-2xl font-bold text-red-400">{t.lost}</div>
+                                        <div className="col-span-3 text-center pr-6">
+                                            <span className={`text-4xl font-black drop-shadow-[0_0_10px_rgba(255,255,255,0.3)] ${isTopTwo ? 'text-orange-600 scale-110 inline-block' : 'text-white'}`}>{t.points}</span>
                                         </div>
                                     </div>
-                                    <div className="col-span-5 pl-8 flex items-center gap-4">
-                                        {t.flag && <img src={t.flag} className="w-12 h-8 object-cover rounded shadow-md border border-white/10"/>}
-                                        <span className={`text-2xl font-bold uppercase tracking-tight ${isTopTwo ? 'text-orange-600 drop-shadow-sm' : 'text-white'}`}>{t.name}</span>
-                               
-                                    </div>
-                                    <div className="col-span-1 text-center text-2xl font-bold text-slate-400">{t.played}</div>
-                                    <div className="col-span-1 text-center text-2xl font-bold text-green-400">{t.won}</div>
-                                    <div className="col-span-1 text-center text-2xl font-bold text-red-400">{t.lost}</div>
-                                    <div className="col-span-3 text-center pr-6">
-                                         <span className={`text-4xl font-black drop-shadow-[0_0_10px_rgba(255,255,255,0.3)] ${isTopTwo ? 'text-orange-600 scale-110 inline-block' : 'text-white'}`}>{t.points}</span>
-                                    </div>
-                                </div>
-                            )})}
+                                )
+                            })}
                         </div>
                     </div>
                 </div>
@@ -1884,7 +1914,40 @@ function BroadcastOverlay({ matchId }) {
 
                         return (
                             <>
-                                {/* --- PLAYER OVERLAY (LEFT)*/}
+                                {/* --- SUBSTITUTION OVERLAY (LEFT SIDE) --- */}
+                                {(() => {
+                                    const s = match.subData || {};
+                                    const isVisible = s.visible && s.teamId === left.id && !introMode && match.activeView === 'scoreboard';
+                                    const pIn = left.roster?.find(p => p.id === s.inId);
+                                    const pOut = left.roster?.find(p => p.id === s.outId);
+
+                                    return (
+                                        <div className={`absolute left-0 bottom-full mb-0 transition-all duration-500 ease-out z-[110] overflow-hidden ${isVisible && pIn && pOut ? 'w-[396px] opacity-100 h-32' : 'w-0 opacity-0 h-0'}`}>
+                                            <div className="w-[396px] h-full flex flex-col shadow-xl">
+                                                {/* IN PLAYER (TOP - GREEN) */}
+                                                <div className="flex-1 bg-green-700 text-white flex items-center px-4 relative border-r-4 border-white/20">
+                                                    <ArrowUpCircle className="text-white/80 mr-3 w-8 h-8" />
+                                                    <span className="text-4xl font-black mr-4">{pIn?.number}</span>
+                                                    <div className="flex flex-col overflow-hidden">
+                                                        <span className="text-lg font-bold uppercase leading-none truncate">{pIn?.name}</span>
+                                                        <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">SUBSTITUTION IN</span>
+                                                    </div>
+                                                </div>
+                                                {/* OUT PLAYER (BOTTOM - RED) */}
+                                                <div className="flex-1 bg-red-800 text-white flex items-center px-4 relative border-r-4 border-white/20">
+                                                    <ArrowDownCircle className="text-white/80 mr-3 w-8 h-8" />
+                                                    <span className="text-4xl font-black mr-4 text-white/70">{pOut?.number}</span>
+                                                    <div className="flex flex-col overflow-hidden">
+                                                        <span className="text-lg font-bold uppercase leading-none truncate text-white/90">{pOut?.name}</span>
+                                                        <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">SUBSTITUTION OUT</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+
+                                {/* --- PLAYER OVERLAY (LEFT) --- */}
                                 <div className={`absolute left-0 bottom-full h-24 flex items-center mb-0 transition-all duration-700 ease-in-out z-[100] overflow-hidden ${isLeftPlayer && !isFullTime ? 'w-[396px] opacity-100' : 'w-0 opacity-0'}`}>
                                     {activeP && isLeftPlayer && (
                                         <div className="w-[396px] h-24 bg-[#2F36CF] text-white flex items-center relative px-6 border-r-2 border-white/10 shadow-xl">
@@ -1907,10 +1970,9 @@ function BroadcastOverlay({ matchId }) {
                                         </div>
                                     )}
 
-                                    {/* Name Bar (Outer) - UPDATED WIDTH (300px default) */}
+                                    {/* Name Bar */}
                                     <div style={{ backgroundColor: left.color, width: isFullTime ? '550px' : (introMode ? '600px' : '300px') }} className="h-24 transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] flex items-center justify-center relative z-0 shadow-lg overflow-hidden">
                                         <span className="font-black uppercase whitespace-nowrap transition-all duration-500 text-5xl" style={{ color: getTextColor(left.color) }}>
-                                            {/* Show Full Name in Full Time or Intro, otherwise Short Code */}
                                             {(introMode || isFullTime) ? left.name : (left.country || left.name.substring(0, 3))}
                                         </span>
                                         {/* Flag - Intro Only */}
@@ -1921,31 +1983,27 @@ function BroadcastOverlay({ matchId }) {
                                         <div className="absolute bottom-0 left-0 w-full h-2 bg-[#2F36CF] z-30"></div>
                                     </div>
 
-                                    {/* Sets Box (Middle) - UPDATED to Theme Blue */}
+                                    {/* Sets Box */}
                                     <div className={`h-24 bg-[#f05c22] text-white flex flex-col items-center justify-center border-r-2 border-black/10 z-10 overflow-hidden transition-all duration-1000 ${introMode ? 'w-0 opacity-0' : 'w-24 opacity-100'}`}>
                                         <span className="text-[30px] font-bold uppercase leading-none mt-1 text-white/70">SETS</span>
                                         <span className="text-5xl font-black leading-none">{left.sets}</span>
-
                                         <div className="absolute bottom-0 left-0 w-full h-2 bg-[#2F36CF]"></div>
-
                                     </div>
 
-                                    {/* Score Box (Inner) */}
+                                    {/* Score Box */}
                                     <div className={`h-24 bg-white text-slate-900 flex items-center justify-center z-20 overflow-hidden transition-all duration-1000 relative ${introMode || isFullTime ? 'w-0 opacity-0' : 'w-32 opacity-100'}`}>
                                         <span key={left.score} className="text-6xl font-black animate-score-pop">{left.score}</span>
                                         <div className="absolute top-1 left-2 flex gap-1">{[...Array(left.timeouts)].map((_, i) => <div key={i} className="w-2 h-2 bg-red-500 rounded-full" />)}</div>
                                         {sL && <img src="/img/volleyball.png" className="w-5 absolute right-1 top-1 animate-spin-slow" />}
-
                                         <div className="absolute bottom-0 left-0 w-full h-2 bg-[#2F36CF]"></div>
                                     </div>
                                 </div>
 
-                                {/* CENTER LOGO (Fixed) */}
+                                {/* CENTER LOGO */}
                                 <div className="z-30 h-24 w-36 bg-[#2F36CF] flex items-center justify-center shadow-2xl relative border-x-2 border-white/10">
                                     <div className="flex items-center justify-center w-full h-full relative z-20 bg-[#2F36CF]">
                                         <img src={match.tournamentLogo || "/img/logo.png"} className="h-20 w-20 object-contain" onError={(e) => e.target.style.display = 'none'} />
                                     </div>
-
                                     <div className="absolute bottom-0 left-0 w-full h-2 bg-[#2F36CF] z-30"></div>
 
                                     {/* SPONSOR LOGO BAR */}
@@ -1954,11 +2012,7 @@ function BroadcastOverlay({ matchId }) {
                                             {match.broadcastSponsors.length === 1 ? (
                                                 <img src={match.broadcastSponsors[0]} className="h-10 w-32 object-contain" />
                                             ) : (
-                                                <img
-                                                    key={sponsorIdx}
-                                                    src={match.broadcastSponsors[sponsorIdx]}
-                                                    className="h-10 w-32 object-contain animate-fade-cycle"
-                                                />
+                                                <img key={sponsorIdx} src={match.broadcastSponsors[sponsorIdx]} className="h-10 w-32 object-contain animate-fade-cycle" />
                                             )}
                                         </div>
                                     )}
@@ -1966,14 +2020,13 @@ function BroadcastOverlay({ matchId }) {
 
                                 {/* RIGHT SIDE GROUP */}
                                 <div className="flex items-center z-10 flex-row-reverse relative">
-
                                     {topLabelR && !introMode && !isRightPlayer && !isFullTime && (
                                         <div className={`absolute -top-8 right-0 h-8 flex items-center justify-center text-white text-sm font-black tracking-wider uppercase z-30 transition-all duration-300 w-[396px] shadow-lg ${topLabelR.className}`}>
                                             {topLabelR.text}
                                         </div>
                                     )}
 
-                                    {/* Name Bar (Outer) - UPDATED WIDTH (300px default) */}
+                                    {/* Name Bar */}
                                     <div style={{ backgroundColor: right.color, width: isFullTime ? '550px' : (introMode ? '600px' : '300px') }} className="h-24 transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] flex items-center justify-center relative z-0 shadow-lg overflow-hidden">
                                         <span className="font-black uppercase whitespace-nowrap transition-all duration-500 text-5xl" style={{ color: getTextColor(right.color) }}>
                                             {(introMode || isFullTime) ? right.name : (right.country || right.name.substring(0, 3))}
@@ -1981,30 +2034,26 @@ function BroadcastOverlay({ matchId }) {
                                         <div className={`absolute left-0 top-0 bottom-0 w-full overflow-hidden flex items-center justify-center transition-opacity duration-500 ${(introMode || isFullTime) ? 'opacity-20' : 'opacity-0'}`}>
                                             {right.flag && <img src={right.flag} className="w-full h-full object-cover" />}
                                         </div>
-
                                         <div className="absolute bottom-0 left-0 w-full h-2 bg-[#2F36CF] z-30"></div>
                                     </div>
 
-                                    {/* Sets Box (Middle) - UPDATED to Theme Blue */}
+                                    {/* Sets Box */}
                                     <div className={`h-24 bg-[#f05c22] text-white flex flex-col items-center justify-center border-l-2 border-black/10 z-10 overflow-hidden transition-all duration-1000 ${introMode ? 'w-0 opacity-0' : 'w-24 opacity-100'}`}>
                                         <span className="text-[30px] font-bold uppercase leading-none mt-1 text-white/70">SETS</span>
                                         <span className="text-5xl font-black leading-none">{right.sets}</span>
                                         <div className="absolute bottom-0 left-0 w-full h-2 bg-[#2F36CF]"></div>
-
                                     </div>
 
-                                    {/* Score Box (Inner) */}
+                                    {/* Score Box */}
                                     <div className={`h-24 bg-white text-slate-900 flex items-center justify-center z-20 overflow-hidden transition-all duration-1000 relative ${introMode || isFullTime ? 'w-0 opacity-0' : 'w-32 opacity-100'}`}>
                                         <span key={right.score} className="text-6xl font-black animate-score-pop">{right.score}</span>
                                         <div className="absolute top-1 right-2 flex gap-1">{[...Array(right.timeouts)].map((_, i) => <div key={i} className="w-2 h-2 bg-red-500 rounded-full" />)}</div>
                                         {sR && <img src="/img/volleyball.png" className="w-5 absolute left-1 top-1 animate-spin-slow" />}
-
-                                        {/* Theme Blue Bottom Line */}
                                         <div className="absolute bottom-0 left-0 w-full h-2 bg-[#2F36CF]"></div>
                                     </div>
                                 </div>
 
-                                {/* --- PLAYER OVERLAY (RIGHT) - ABSOLUTE --- */}
+                                {/* --- PLAYER OVERLAY (RIGHT) --- */}
                                 <div className={`absolute right-0 bottom-full h-24 flex items-center mb-0 transition-all duration-700 ease-in-out z-[100] overflow-hidden ${isRightPlayer && !isFullTime ? 'w-[396px] opacity-100' : 'w-0 opacity-0'}`}>
                                     {activeP && isRightPlayer && (
                                         <div className="w-[396px] h-24 bg-[#2F36CF] text-white flex items-center relative px-6 border-l-2 border-white/10 flex-row-reverse shadow-xl">
@@ -2018,6 +2067,39 @@ function BroadcastOverlay({ matchId }) {
                                         </div>
                                     )}
                                 </div>
+
+                                {/* --- SUBSTITUTION OVERLAY (RIGHT SIDE) --- */}
+                                {(() => {
+                                    const s = match.subData || {};
+                                    const isVisible = s.visible && s.teamId === right.id && !introMode && match.activeView === 'scoreboard';
+                                    const pIn = right.roster?.find(p => p.id === s.inId);
+                                    const pOut = right.roster?.find(p => p.id === s.outId);
+
+                                    return (
+                                        <div className={`absolute right-0 bottom-full mb-0 transition-all duration-500 ease-out z-[110] overflow-hidden ${isVisible && pIn && pOut ? 'w-[396px] opacity-100 h-32' : 'w-0 opacity-0 h-0'}`}>
+                                            <div className="w-[396px] h-full flex flex-col shadow-xl">
+                                                {/* IN PLAYER (TOP - GREEN) */}
+                                                <div className="flex-1 bg-green-700 text-white flex items-center px-4 relative border-l-4 border-white/20 flex-row-reverse text-right">
+                                                    <ArrowUpCircle className="text-white/80 ml-3 w-8 h-8" />
+                                                    <span className="text-4xl font-black ml-4">{pIn?.number}</span>
+                                                    <div className="flex flex-col overflow-hidden">
+                                                        <span className="text-lg font-bold uppercase leading-none truncate">{pIn?.name}</span>
+                                                        <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">SUBSTITUTION IN</span>
+                                                    </div>
+                                                </div>
+                                                {/* OUT PLAYER (BOTTOM - RED) */}
+                                                <div className="flex-1 bg-red-800 text-white flex items-center px-4 relative border-l-4 border-white/20 flex-row-reverse text-right">
+                                                    <ArrowDownCircle className="text-white/80 ml-3 w-8 h-8" />
+                                                    <span className="text-4xl font-black ml-4 text-white/70">{pOut?.number}</span>
+                                                    <div className="flex flex-col overflow-hidden">
+                                                        <span className="text-lg font-bold uppercase leading-none truncate text-white/90">{pOut?.name}</span>
+                                                        <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">SUBSTITUTION OUT</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
                             </>
                         );
                     })()}
@@ -2104,25 +2186,25 @@ function LineupDisplay({ team, ids, step }) {
                 <div className="absolute inset-0 flex">
                     <div className="w-[40%] h-full relative">
                         <div key={featuredPlayer.id} className="absolute inset-0 animate-slide-in-left">
-                            
+
                             {/* Big Number Background */}
                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[500px] font-black text-white/20 select-none leading-none z-0">
                                 {featuredPlayer.number}
                             </div>
-                            
+
                             <div className="absolute bottom-60 left-52 z-20 flex flex-col items-center">
                                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[700px] h-[900px] flex items-end justify-center -z-10">
-                                    
+
                                     {/* VIDEO RENDERER (Main Hero) */}
                                     {isVideo(featuredPlayer.photo) ? (
                                         <video
                                             src={resolveUrl(featuredPlayer.photo)}
-                                            autoPlay 
-                                            muted 
+                                            autoPlay
+                                            muted
                                             playsInline
                                             // REMOVED 'loop' here
                                             className="h-full object-contain drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]"
-                                            style={{ backgroundColor: 'transparent' }} 
+                                            style={{ backgroundColor: 'transparent' }}
                                             onError={(e) => console.error("Video Error:", e)}
                                         />
                                     ) : featuredPlayer.photo ? (
@@ -2154,12 +2236,12 @@ function LineupDisplay({ team, ids, step }) {
                                     <div className="w-16 h-16 bg-slate-800 rounded-full overflow-hidden border-2 border-white/20 relative">
                                         {/* VIDEO RENDERER (List Thumbnails) */}
                                         {isVideo(p.photo) ? (
-                                            <video 
-                                                src={resolveUrl(p.photo)} 
-                                                className="w-full h-full object-cover" 
-                                                autoPlay muted playsInline 
+                                            <video
+                                                src={resolveUrl(p.photo)}
+                                                className="w-full h-full object-cover"
+                                                autoPlay muted playsInline
                                                 // REMOVED 'loop' here
-                                                style={{ backgroundColor: 'transparent' }} 
+                                                style={{ backgroundColor: 'transparent' }}
                                             />
                                         ) : p.photo ? (
                                             <img src={resolveUrl(p.photo)} className="w-full h-full object-cover" />
@@ -2189,9 +2271,9 @@ function LineupDisplay({ team, ids, step }) {
                                     ></div>
                                     {/* VIDEO RENDERER (Summary) */}
                                     {isVideo(p.photo) ? (
-                                        <video 
-                                            src={resolveUrl(p.photo)} 
-                                            autoPlay muted playsInline 
+                                        <video
+                                            src={resolveUrl(p.photo)}
+                                            autoPlay muted playsInline
                                             // REMOVED 'loop' here
                                             className="h-[95%] w-full object-contain object-bottom drop-shadow-lg"
                                             style={{ backgroundColor: 'transparent' }}
@@ -2217,6 +2299,78 @@ function LineupDisplay({ team, ids, step }) {
             )}
         </div>
     );
+}
+
+function SubController({ team, side, match, updateMatch }) {
+    if (!team) return null;
+
+    // Helper to get safe sub data
+    const subData = match.subData || { visible: false, teamId: null, inId: null, outId: null };
+    const isActive = subData.visible && subData.teamId === team.id;
+
+    const handleSub = (field, id) => {
+        const newData = { ...subData, teamId: team.id, [field]: id };
+        updateMatch({ subData: newData });
+    };
+
+    const toggleGraphic = () => {
+        if (!subData.inId || !subData.outId) {
+            alert("Please select both players (IN and OUT)");
+            return;
+        }
+        updateMatch({ subData: { ...subData, teamId: team.id, visible: !subData.visible } });
+    };
+
+    const clearSub = () => {
+        updateMatch({ subData: { visible: false, teamId: null, inId: null, outId: null } });
+    };
+
+    return (
+        <div className="bg-slate-50 p-4 rounded-xl border-t-4 shadow-sm" style={{ borderColor: team.color }}>
+            <h4 className="font-black text-lg uppercase mb-4 text-slate-700">{team.name}</h4>
+
+            <div className="flex gap-4 mb-4">
+                <div className="flex-1">
+                    <label className="text-xs font-bold text-red-500 flex items-center gap-1 mb-1"><ArrowDownCircle size={12} /> OUT (Current)</label>
+                    <select
+                        className="w-full p-2 border rounded font-bold"
+                        value={subData.teamId === team.id ? (subData.outId || '') : ''}
+                        onChange={(e) => handleSub('outId', e.target.value)}
+                    >
+                        <option value="">Select Player Out...</option>
+                        {(team.roster || []).map(p => (
+                            <option key={p.id} value={p.id}>#{p.number} {p.name}</option>
+                        ))}
+                    </select>
+                </div>
+                <div className="flex-1">
+                    <label className="text-xs font-bold text-green-600 flex items-center gap-1 mb-1"><ArrowUpCircle size={12} /> IN (Substitute)</label>
+                    <select
+                        className="w-full p-2 border rounded font-bold"
+                        value={subData.teamId === team.id ? (subData.inId || '') : ''}
+                        onChange={(e) => handleSub('inId', e.target.value)}
+                    >
+                        <option value="">Select Player In...</option>
+                        {(team.roster || []).map(p => (
+                            <option key={p.id} value={p.id}>#{p.number} {p.name}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+
+            <div className="flex gap-2">
+                <button
+                    onClick={toggleGraphic}
+                    className={`flex-1 py-3 rounded font-bold text-white flex justify-center items-center gap-2 transition-all ${isActive ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'}`}
+                >
+                    {isActive ? 'HIDE GRAPHIC' : 'SHOW GRAPHIC'}
+                </button>
+                <button onClick={clearSub} className="px-4 bg-slate-200 rounded font-bold text-slate-600">Reset</button>
+            </div>
+
+            {isActive && <div className="mt-2 text-center text-xs font-bold text-green-600 animate-pulse">● Graphic is Live on Output</div>}
+        </div>
+    )
 }
 
 // --- Stadium / LED View ( 1:1 & 16:9) ---
