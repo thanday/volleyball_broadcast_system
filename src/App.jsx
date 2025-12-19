@@ -2437,13 +2437,13 @@ function SubController({ team, side, match, updateMatch }) {
 }
 
 // --- Stadium / LED View ( 1:1 & 16:9) ---
-// --- UPDATED STADIUM VIEW (With Subs) ---
 function StadiumView({ matchId }) {
     const { matches, teams } = useVolleyballData();
     const matchList = Array.isArray(matches) ? matches : [];
     const match = matchList.find(m => m.id === matchId);
     const [sponsorIdx, setSponsorIdx] = useState(0);
 
+    // --- 1. URL RESOLVER (Ensures flags/images load correctly) ---
     const serverUrl = window.localStorage.getItem('volleyball_server_url') || 'http://localhost:3001';
     const resolveUrl = (url) => {
         if (!url) return null;
@@ -2455,7 +2455,7 @@ function StadiumView({ matchId }) {
         if (!matchTeam) return null;
         const latest = (teams || []).find(t => t.id === matchTeam.id);
         if (!latest) return matchTeam;
-        return { ...matchTeam, ...latest };
+        return { ...matchTeam, name: latest.name, country: latest.country, logo: latest.logo, flag: latest.flag, roster: latest.roster };
     };
 
     useEffect(() => {
@@ -2464,189 +2464,264 @@ function StadiumView({ matchId }) {
                 setSponsorIdx(prev => (prev + 1) % match.ledSponsors.length);
             }, 5000);
             return () => clearInterval(interval);
+        } else {
+            setSponsorIdx(0);
         }
     }, [match?.ledSponsors, match?.showLedSponsors]);
 
-    if (!match) return <div className="w-screen h-screen bg-black flex items-center justify-center text-white font-bold animate-pulse">Waiting for Match Data...</div>;
-    if (!match.teamA || !match.teamB) return <div className="w-screen h-screen bg-black flex items-center justify-center text-white font-bold">Waiting for Teams...</div>;
+    if (!match || !match.teamA || !match.teamB) return <div className="text-white p-10 bg-black h-screen">Waiting for data...</div>;
 
     const currentTeamA = getLatestTeamData(match.teamA);
     const currentTeamB = getLatestTeamData(match.teamB);
     const left = match.isSwapped ? currentTeamB : currentTeamA;
     const right = match.isSwapped ? currentTeamA : currentTeamB;
 
-    const leftColor = left?.color || '#333';
-    const rightColor = right?.color || '#333';
-
     const sL = match.serveVisible && match.serving === (match.isSwapped ? 'B' : 'A');
     const sR = match.serveVisible && match.serving === (match.isSwapped ? 'A' : 'B');
-    const isSquare = match.ledAspectRatio === '1:1';
 
-    // --- SUB DATA LOGIC ---
-    const sData = match.subData || {};
-    const subActive = sData.visible;
-    const subTeamId = sData.teamId;
-    
-    // Helper to render Sub Overlay inside a team card
-    const renderSubOverlay = (team) => {
-        if (!subActive || subTeamId !== team.id) return null;
-        
-        const pIn = team.roster?.find(p => p.id === sData.inId);
-        const pOut = team.roster?.find(p => p.id === sData.outId);
-        
-        if(!pIn || !pOut) return null;
-
-        return (
-            <div className="absolute inset-0 z-50 flex flex-col animate-in zoom-in duration-300">
-                {/* IN (Green) */}
-                <div className="flex-1 bg-green-600 flex items-center justify-between px-4 border-b border-black/20">
-                    <div className="flex flex-col">
-                        <span className="text-sm font-bold uppercase text-green-200">IN</span>
-                        <span className="text-2xl font-black uppercase leading-none truncate w-32">{pIn.name}</span>
-                    </div>
-                    <span className="text-7xl font-black">{pIn.number}</span>
-                </div>
-                {/* OUT (Red) */}
-                <div className="flex-1 bg-red-600 flex items-center justify-between px-4">
-                    <div className="flex flex-col">
-                        <span className="text-sm font-bold uppercase text-red-200">OUT</span>
-                        <span className="text-2xl font-black uppercase leading-none truncate w-32">{pOut.name}</span>
-                    </div>
-                    <span className="text-7xl font-black text-white/80">{pOut.number}</span>
-                </div>
-            </div>
-        );
-    };
-
+    const history = match.setHistory || [];
     const getSetResult = (teamSide, setIndex) => {
-        const history = match.setHistory || [];
         const set = history.find(h => h.set === setIndex);
         if (!set) return { score: "-", isWinner: false };
         const isTeamA = teamSide.id === match.teamA.id;
         const myScore = isTeamA ? set.scoreA : set.scoreB;
         const otherScore = isTeamA ? set.scoreB : set.scoreA;
-        return { score: myScore, isWinner: parseInt(myScore) > parseInt(otherScore) };
+        return { score: myScore, isWinner: myScore > otherScore };
+    };
+
+    // --- MODE DETECTION ---
+    const isSquare = match.ledAspectRatio === '1:1';
+
+    // --- 2. SUBSTITUTION OVERLAY RENDERER ---
+    const sData = match.subData || {};
+    const renderSubOverlay = (team) => {
+        // Only show if visible AND matches this team ID
+        if (!sData.visible || sData.teamId !== team.id) return null;
+
+        const pIn = team.roster?.find(p => p.id === sData.inId);
+        const pOut = team.roster?.find(p => p.id === sData.outId);
+
+        if (!pIn || !pOut) return null;
+
+        return (
+            <div className="absolute inset-0 z-50 flex flex-col animate-in zoom-in duration-300 bg-slate-900 border-4 border-yellow-400">
+                {/* HEADER: Flag & Name */}
+                <div className="h-[20%] bg-white flex items-center gap-4 px-4 border-b-4 border-slate-900">
+                    <div className="h-16 w-24 bg-black/10 rounded border border-black/20 flex items-center justify-center overflow-hidden">
+                        {team.flag ? <img src={resolveUrl(team.flag)} className="w-full h-full object-cover" /> : <Flag className="text-black" />}
+                    </div>
+                    <div className="flex flex-col justify-center">
+                        <span className="text-slate-500 text-xs font-bold uppercase leading-none mb-1">SUBSTITUTION</span>
+                        <span className="text-4xl font-black uppercase text-slate-900 leading-none truncate w-full">{team.name}</span>
+                    </div>
+                </div>
+
+                {/* IN (Green) */}
+                <div className="flex-1 bg-green-600 flex items-center justify-between px-6 border-b border-black/20">
+                    <div className="flex flex-col">
+                        <span className="text-xl font-bold uppercase text-green-200 flex items-center gap-2"><ArrowUpCircle size={24} /> IN</span>
+                        <span className="text-4xl font-black uppercase leading-none truncate w-48 mt-1">{pIn.name}</span>
+                    </div>
+                    <span className="text-[120px] font-black">{pIn.number}</span>
+                </div>
+
+                {/* OUT (Red) */}
+                <div className="flex-1 bg-red-600 flex items-center justify-between px-6">
+                    <div className="flex flex-col">
+                        <span className="text-xl font-bold uppercase text-red-200 flex items-center gap-2"><ArrowDownCircle size={24} /> OUT</span>
+                        <span className="text-4xl font-black uppercase leading-none truncate w-48 mt-1">{pOut.name}</span>
+                    </div>
+                    <span className="text-[120px] font-black text-white/80">{pOut.number}</span>
+                </div>
+            </div>
+        );
     };
 
     return (
         <div className="w-screen h-screen bg-black text-white flex flex-col font-sans overflow-hidden relative">
-            <div className="absolute inset-0 bg-slate-900 z-0"></div>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-900 via-black to-black opacity-80 z-0"></div>
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-30 z-0"></div>
+
+            {/* --- LAYOUT SWITCH --- */}
 
             {isSquare ? (
-                 /* 1:1 SQUARE LAYOUT */
+
                 <div className="w-full h-full flex items-center justify-center p-4">
-                    <div className="relative z-10 aspect-square h-full max-h-screen flex flex-col gap-2 bg-black border border-white/10 p-2">
-                        {/* Header */}
-                        <div className="h-[15%] w-full flex justify-between items-center bg-[#2F36CF] rounded mb-1 px-4 relative overflow-hidden">
-                            <img src="/img/ledlogo.png" className="h-[80%] object-contain z-10" onError={(e)=>e.target.style.display='none'} />
+                    <div className="relative z-10 aspect-square h-full max-h-screen flex flex-col gap-2 bg-black shadow-2xl border border-white/5 p-4">
+
+                        {/* 1. Header (Blue Theme) */}
+                        <div className="h-[15%] w-full flex justify-between items-center bg-[#2F36CF] rounded-xl border border-white/10 mb-1 px-4 shadow-md relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-r from-black/10 to-transparent"></div>
+
+                            {/* Left: LED Logo */}
+                            <img src="/img/ledlogo.png" className="h-[80%] object-contain drop-shadow-md z-10" onError={(e) => e.target.style.display = 'none'} />
+
                             {match.showLedSponsors && (
-                                <div className="h-[90%] w-[40%] bg-white rounded flex items-center justify-center p-1">
-                                    {match.ledSponsors?.length > 0 ? 
-                                        <img src={resolveUrl(match.ledSponsors[sponsorIdx])} className="h-full object-contain"/> : 
-                                        <span className="text-black text-[10px] font-bold">SPONSOR</span>
-                                    }
+                                <div className="h-[95%] w-[40%] flex items-center justify-center bg-white rounded-lg p-1 z-10 shadow-sm">
+                                    {match.ledSponsors?.length > 0 ? (
+                                        <img key={sponsorIdx} src={resolveUrl(match.ledSponsors[sponsorIdx])} className="w-full h-full object-contain animate-fade-cycle" />
+                                    ) : <span className="text-[10px] text-slate-300 font-bold">SPONSOR</span>}
                                 </div>
                             )}
                         </div>
 
-                        {/* Main Scoreboard */}
-                        <div className="h-[50%] w-full flex gap-1">
+                        {/* 2. MAIN SCOREBOARD (Side-by-Side) */}
+                        <div className="h-[50%] w-full flex gap-2">
+
                             {/* LEFT TEAM CARD */}
-                            <div className="flex-1 bg-slate-800 rounded border-l-8 flex flex-col items-center p-2 relative overflow-hidden" style={{ borderLeftColor: leftColor }}>
-                                {renderSubOverlay(left)} {/* <-- SUB OVERLAY INJECTED HERE */}
-                                
-                                {sL && <div className="absolute left-1 top-1 text-yellow-400">●</div>}
-                                <div className="h-[30%] w-full flex justify-center bg-black/30 rounded">
-                                    {left.flag ? <img src={resolveUrl(left.flag)} className="h-full object-contain" /> : <Flag />}
+                            <div className="flex-1 bg-slate-900 rounded-xl border-l-8 border-t border-b border-r border-slate-700 flex flex-col items-center p-2 relative shadow-lg overflow-hidden" style={{ borderLeftColor: left.color }}>
+                                {/* SUB OVERLAY INJECTION */}
+                                {renderSubOverlay(left)}
+
+                                {sL && <div className="absolute left-2 top-2 z-20"><img src="/img/volleyball.png" className="w-8 h-8 animate-pulse" /></div>}
+
+                                {/* Flag */}
+                                <div className="h-[30%] w-full flex justify-center mt-2">
+                                    <div className="aspect-video h-full bg-black border border-slate-600 shadow relative">
+                                        {left.flag ? <img src={resolveUrl(left.flag)} className="w-full h-full object-cover" /> : <Flag className="text-slate-600 m-auto" />}
+                                    </div>
                                 </div>
-                                <div className="flex-1 flex items-center justify-center">
-                                    <span className="text-[18vh] font-black leading-none">{left.score}</span>
+
+                                {/* Name (Short Code) */}
+                                <div className="h-[20%] w-full flex items-center justify-center mt-1 bg-gradient-to-r from-transparent via-slate-800 to-transparent">
+                                    <h2 className="text-[7vh] font-black uppercase text-white tracking-tighter leading-none drop-shadow-lg">
+                                        {left.country || left.name.substring(0, 3).toUpperCase()}
+                                    </h2>
+                                </div>
+
+                                {/* Score */}
+                                <div className="flex-1 w-full flex items-center justify-center">
+                                    <span className="text-[22vh] font-black leading-none text-white tabular-nums drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">{left.score}</span>
                                 </div>
                             </div>
 
                             {/* RIGHT TEAM CARD */}
-                            <div className="flex-1 bg-slate-800 rounded border-l-8 flex flex-col items-center p-2 relative overflow-hidden" style={{ borderLeftColor: rightColor }}>
-                                {renderSubOverlay(right)} {/* <-- SUB OVERLAY INJECTED HERE */}
-                                
-                                {sR && <div className="absolute left-1 top-1 text-yellow-400">●</div>}
-                                <div className="h-[30%] w-full flex justify-center bg-black/30 rounded">
-                                    {right.flag ? <img src={resolveUrl(right.flag)} className="h-full object-contain" /> : <Flag />}
+                            <div className="flex-1 bg-slate-900 rounded-xl border-l-8 border-t border-b border-r border-slate-700 flex flex-col items-center p-2 relative shadow-lg overflow-hidden" style={{ borderLeftColor: right.color }}>
+                                {/* SUB OVERLAY INJECTION */}
+                                {renderSubOverlay(right)}
+
+                                {sR && <div className="absolute left-2 top-2 z-20"><img src="/img/volleyball.png" className="w-8 h-8 animate-pulse" /></div>}
+
+                                {/* Flag */}
+                                <div className="h-[30%] w-full flex justify-center mt-2">
+                                    <div className="aspect-video h-full bg-black border border-slate-600 shadow relative">
+                                        {right.flag ? <img src={resolveUrl(right.flag)} className="w-full h-full object-cover" /> : <Flag className="text-slate-600 m-auto" />}
+                                    </div>
                                 </div>
-                                <div className="flex-1 flex items-center justify-center">
-                                    <span className="text-[18vh] font-black leading-none">{right.score}</span>
+
+                                {/* Name (Short Code) */}
+                                <div className="h-[20%] w-full flex items-center justify-center mt-1 bg-gradient-to-r from-transparent via-slate-800 to-transparent">
+                                    <h2 className="text-[7vh] font-black uppercase text-white tracking-tighter leading-none drop-shadow-lg">
+                                        {right.country || right.name.substring(0, 3).toUpperCase()}
+                                    </h2>
+                                </div>
+
+                                {/* Score */}
+                                <div className="flex-1 w-full flex items-center justify-center">
+                                    <span className="text-[22vh] font-black leading-none text-white tabular-nums drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]">{right.score}</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* History */}
-                        <div className="h-[35%] w-full bg-slate-800 rounded flex flex-col mt-1">
-                             <div className="flex h-8 bg-slate-700 items-center text-xs font-bold text-slate-400">
-                                <div className="w-16 text-center">TEAM</div>
-                                {[1,2,3,4,5].map(i=><div key={i} className="flex-1 text-center">{i}</div>)}
-                             </div>
-                             {/* Row A */}
-                             <div className="flex-1 flex items-center border-b border-white/5">
-                                 <div className="w-16 h-full p-1 flex justify-center">{left.flag && <img src={resolveUrl(left.flag)} className="h-full object-contain"/>}</div>
-                                 {[1,2,3,4,5].map(i => {
-                                     const r = getSetResult(left, i);
-                                     return <div key={i} className={`flex-1 text-center font-bold text-2xl ${r.isWinner ? 'text-yellow-400' : 'text-white/30'}`}>{r.score}</div>
-                                 })}
-                             </div>
-                             {/* Row B */}
-                             <div className="flex-1 flex items-center">
-                                 <div className="w-16 h-full p-1 flex justify-center">{right.flag && <img src={resolveUrl(right.flag)} className="h-full object-contain"/>}</div>
-                                 {[1,2,3,4,5].map(i => {
-                                     const r = getSetResult(right, i);
-                                     return <div key={i} className={`flex-1 text-center font-bold text-2xl ${r.isWinner ? 'text-yellow-400' : 'text-white/30'}`}>{r.score}</div>
-                                 })}
-                             </div>
+                        {/* 3. HISTORY TABLE (Bottom) */}
+                        <div className="h-[35%] w-full bg-slate-900 rounded-xl border border-slate-700 flex flex-col shadow-inner overflow-hidden">
+                            {/* Header */}
+                            <div className="flex bg-slate-800 h-[20%] items-center border-b border-slate-700">
+                                <div className="w-24 flex items-center justify-center border-r border-slate-700">
+                                    <Flag size={20} className="text-slate-500" />
+                                </div>
+                                {[1, 2, 3, 4, 5].map(i => (
+                                    <div key={i} className="flex-1 h-full flex items-center justify-center font-black text-slate-400 border-l border-slate-700 text-2xl">
+                                        {i}
+                                    </div>
+                                ))}
+                            </div>
+                            {/* Row A */}
+                            <div className="flex-1 flex items-center border-b border-slate-700/50">
+                                <div className="w-24 h-full p-2 flex items-center justify-center bg-black/20 border-r border-slate-700">
+                                    {left.flag ? <img src={resolveUrl(left.flag)} className="w-full h-full object-contain" /> : <Flag className="text-slate-600" />}
+                                </div>
+                                {[1, 2, 3, 4, 5].map(i => {
+                                    const result = getSetResult(left, i); return (
+                                        <div key={i} className={`flex-1 h-full flex items-center justify-center font-black text-6xl border-l border-slate-700/50 ${result.isWinner ? 'text-yellow-400 bg-yellow-900/10' : 'text-white/50'}`}>
+                                            {result.score}
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                            {/* Row B */}
+                            <div className="flex-1 flex items-center">
+                                <div className="w-24 h-full p-2 flex items-center justify-center bg-black/20 border-r border-slate-700">
+                                    {right.flag ? <img src={resolveUrl(right.flag)} className="w-full h-full object-contain" /> : <Flag className="text-slate-600" />}
+                                </div>
+                                {[1, 2, 3, 4, 5].map(i => {
+                                    const result = getSetResult(right, i); return (
+                                        <div key={i} className={`flex-1 h-full flex items-center justify-center font-black text-6xl border-l border-slate-700/50 ${result.isWinner ? 'text-yellow-400 bg-yellow-900/10' : 'text-white/50'}`}>
+                                            {result.score}
+                                        </div>
+                                    )
+                                })}
+                            </div>
                         </div>
                     </div>
                 </div>
-            ) : (
-                /* 16:9 STANDARD LAYOUT (Existing code preserved) */
-                <div className="w-full h-full p-10 flex flex-col">
-                    <div className="flex justify-center mb-8">
-                         <img src={match.tournamentLogo ? resolveUrl(match.tournamentLogo) : "/img/cava_logo.png"} className="h-32 object-contain" onError={(e)=>e.target.style.display='none'} />
-                    </div>
-                    
-                    <div className="flex-1 flex items-center gap-10">
-                        {/* Left Team */}
-                        <div className="flex-1 bg-slate-800 rounded-3xl p-8 flex flex-col items-center border-t-8 shadow-2xl relative overflow-hidden" style={{ borderColor: leftColor }}>
-                             {renderSubOverlay(left)}
-                             <div className="w-full h-48 bg-black rounded-xl mb-4 overflow-hidden relative">
-                                 {left.flag ? <img src={resolveUrl(left.flag)} className="w-full h-full object-cover"/> : <Flag className="w-full h-full text-slate-600"/>}
-                             </div>
-                             <h2 className="text-5xl font-black uppercase text-center mb-4 leading-tight">{left.name}</h2>
-                             <span className="text-[250px] font-black leading-none">{left.score}</span>
-                        </div>
 
-                        {/* Center Info */}
-                        <div className="w-[400px] flex flex-col items-center gap-6">
-                            <div className="bg-white/10 px-8 py-2 rounded-full text-2xl font-black uppercase tracking-widest">SETS</div>
-                            <div className="flex items-center gap-4 text-9xl font-black">
-                                <span className="text-yellow-400">{left.sets}</span>
-                                <span className="text-slate-600">-</span>
-                                <span className="text-yellow-400">{right.sets}</span>
+            ) : (
+
+                <>
+                    <div className="absolute top-4 left-0 w-full flex justify-center z-20">
+                        <img src={match.tournamentLogo || "/img/cava_logo.png"} className="h-48 object-contain drop-shadow-xl" onError={(e) => e.target.style.display = 'none'} />
+                    </div>
+                    <div className="relative z-10 flex-1 flex items-stretch justify-between gap-4 px-8 pt-24">
+                        <div className="flex-1 bg-slate-900/50 rounded-3xl border-4 border-slate-700 flex flex-col items-center justify-between p-6 shadow-[0_0_50px_rgba(0,0,0,0.5)] backdrop-blur-sm relative overflow-hidden">
+                            {renderSubOverlay(left)} {/* Sub Overlay */}
+                            <div className="w-full flex flex-col items-center gap-2">
+                                <div className="h-40 w-64 bg-black rounded-xl overflow-hidden border-4 border-slate-600 shadow-lg relative">{left.flag ? <img src={resolveUrl(left.flag)} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-700"><Flag size={64} /></div>}</div>
+                                <h2 className="w-full text-center text-6xl font-black uppercase text-white tracking-tight leading-tight line-clamp-2 drop-shadow-lg" style={{ textShadow: '0 4px 8px rgba(0,0,0,0.8)' }}>{left.name}</h2>
                             </div>
-                             {match.showLedSponsors && match.ledSponsors?.length > 0 && (
-                                <div className="w-full h-40 bg-white rounded-xl flex items-center justify-center p-4 mt-8">
-                                    <img src={resolveUrl(match.ledSponsors[sponsorIdx])} className="w-full h-full object-contain" />
+                            <div className="flex-1 flex items-center justify-center"><span className="text-[350px] font-black leading-none text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] tabular-nums">{left.score}</span></div>
+                        </div>
+                        <div className="w-[400px] flex flex-col items-center justify-center gap-4 pt-4">
+                            <div className="bg-black/60 rounded-full px-12 py-4 border-2 border-white/10 backdrop-blur-md"><span className="text-4xl font-black text-slate-300 uppercase tracking-[0.3em]">SETS</span></div>
+                            <div className="flex items-center gap-4 bg-slate-900/80 p-8 rounded-3xl border-4 border-slate-700 shadow-2xl">
+                                <span className="text-[140px] font-black text-yellow-400 leading-none drop-shadow-lg">{left.sets}</span>
+                                <span className="text-6xl font-black text-slate-600">-</span>
+                                <span className="text-[140px] font-black text-yellow-400 leading-none drop-shadow-lg">{right.sets}</span>
+                            </div>
+                            {match.showLedSponsors && match.ledSponsors && match.ledSponsors.length > 0 && (
+                                <div className="w-full h-32 bg-white rounded-xl shadow-2xl border-4 border-slate-700 flex items-center justify-center p-4 mt-4 animate-in fade-in zoom-in duration-500">
+                                    <img key={sponsorIdx} src={resolveUrl(match.ledSponsors[sponsorIdx])} className="w-full h-full object-contain animate-fade-cycle" />
                                 </div>
                             )}
                         </div>
-
-                        {/* Right Team */}
-                        <div className="flex-1 bg-slate-800 rounded-3xl p-8 flex flex-col items-center border-t-8 shadow-2xl relative overflow-hidden" style={{ borderColor: rightColor }}>
-                             {renderSubOverlay(right)}
-                             <div className="w-full h-48 bg-black rounded-xl mb-4 overflow-hidden relative">
-                                 {right.flag ? <img src={resolveUrl(right.flag)} className="w-full h-full object-cover"/> : <Flag className="w-full h-full text-slate-600"/>}
-                             </div>
-                             <h2 className="text-5xl font-black uppercase text-center mb-4 leading-tight">{right.name}</h2>
-                             <span className="text-[250px] font-black leading-none">{right.score}</span>
+                        <div className="flex-1 bg-slate-900/50 rounded-3xl border-4 border-slate-700 flex flex-col items-center justify-between p-6 shadow-[0_0_50px_rgba(0,0,0,0.5)] backdrop-blur-sm relative overflow-hidden">
+                            {renderSubOverlay(right)} {/* Sub Overlay */}
+                            <div className="w-full flex flex-col items-center gap-2">
+                                <div className="h-40 w-64 bg-black rounded-xl overflow-hidden border-4 border-slate-600 shadow-lg relative">{right.flag ? <img src={resolveUrl(right.flag)} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-700"><Flag size={64} /></div>}</div>
+                                <h2 className="w-full text-center text-6xl font-black uppercase text-white tracking-tight leading-tight line-clamp-2 drop-shadow-lg" style={{ textShadow: '0 4px 8px rgba(0,0,0,0.8)' }}>{right.name}</h2>
+                            </div>
+                            <div className="flex-1 flex items-center justify-center"><span className="text-[350px] font-black leading-none text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] tabular-nums">{right.score}</span></div>
                         </div>
                     </div>
-                </div>
+                    <div className="relative z-10 mt-6 h-[25%] px-8 pb-8">
+                        <div className="w-full h-full bg-black/80 backdrop-blur-xl rounded-3xl border-4 border-slate-700 flex flex-col shadow-2xl overflow-hidden">
+                            <div className="flex bg-slate-800 border-b-2 border-slate-600">
+                                <div className="w-[30%] py-4 pl-8 text-3xl font-black text-slate-400 uppercase tracking-widest text-left">TEAMS</div>
+                                {[1, 2, 3, 4, 5].map(i => (<div key={i} className="flex-1 py-4 text-3xl font-black text-yellow-500 text-center border-l-2 border-slate-600 bg-slate-800/50">SET {i}</div>))}
+                            </div>
+                            <div className="flex-1 flex flex-col">
+                                <div className="flex-1 flex items-center border-b-2 border-slate-600/50">
+                                    <div className="w-[30%] pl-8 text-5xl font-black uppercase text-left truncate drop-shadow-md text-white">{left.name}</div>
+                                    {[1, 2, 3, 4, 5].map(i => { const result = getSetResult(left, i); return (<div key={i} className={`flex-1 h-full flex items-center justify-center text-5xl font-black border-l-2 border-slate-600/50 bg-white/5 transition-all ${result.isWinner ? 'text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]' : 'text-slate-400'}`}>{result.score}</div>) })}
+                                </div>
+                                <div className="flex-1 flex items-center">
+                                    <div className="w-[30%] pl-8 text-5xl font-black uppercase text-left truncate drop-shadow-md text-white">{right.name}</div>
+                                    {[1, 2, 3, 4, 5].map(i => { const result = getSetResult(right, i); return (<div key={i} className={`flex-1 h-full flex items-center justify-center text-5xl font-black border-l-2 border-slate-600/50 bg-white/5 transition-all ${result.isWinner ? 'text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]' : 'text-slate-400'}`}>{result.score}</div>) })}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </>
             )}
         </div>
     )
