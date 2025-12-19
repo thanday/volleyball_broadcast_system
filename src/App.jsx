@@ -2307,9 +2307,12 @@ function SubController({ team, side, match, updateMatch }) {
     // Helper to get safe sub data
     const subData = match.subData || { visible: false, teamId: null, inId: null, outId: null };
     const isActive = subData.visible && subData.teamId === team.id;
+    const isThisTeamSelected = subData.teamId === team.id;
 
     const handleSub = (field, id) => {
-        const newData = { ...subData, teamId: team.id, [field]: id };
+        // If we switch teams, reset the other data
+        const base = isThisTeamSelected ? subData : { visible: false, teamId: team.id, inId: null, outId: null };
+        const newData = { ...base, teamId: team.id, [field]: id };
         updateMatch({ subData: newData });
     };
 
@@ -2325,50 +2328,110 @@ function SubController({ team, side, match, updateMatch }) {
         updateMatch({ subData: { visible: false, teamId: null, inId: null, outId: null } });
     };
 
+    // Sort roster by number for easier finding
+    const sortedRoster = [...(team.roster || [])].sort((a, b) => parseInt(a.number) - parseInt(b.number));
+
     return (
-        <div className="bg-slate-50 p-4 rounded-xl border-t-4 shadow-sm" style={{ borderColor: team.color }}>
-            <h4 className="font-black text-lg uppercase mb-4 text-slate-700">{team.name}</h4>
+        <div className="bg-slate-50 p-4 rounded-xl border-t-4 shadow-sm flex flex-col h-[500px]" style={{ borderColor: team.color }}>
+            
+            {/* Header */}
+            <div className="flex justify-between items-center mb-4">
+                <h4 className="font-black text-lg uppercase text-slate-700 truncate">{team.name}</h4>
+                {isActive && <span className="bg-red-500 text-white text-[10px] px-2 py-1 rounded font-bold animate-pulse">ON AIR</span>}
+            </div>
 
-            <div className="flex gap-4 mb-4">
-                <div className="flex-1">
-                    <label className="text-xs font-bold text-red-500 flex items-center gap-1 mb-1"><ArrowDownCircle size={12} /> OUT (Current)</label>
-                    <select
-                        className="w-full p-2 border rounded font-bold"
-                        value={subData.teamId === team.id ? (subData.outId || '') : ''}
-                        onChange={(e) => handleSub('outId', e.target.value)}
-                    >
-                        <option value="">Select Player Out...</option>
-                        {(team.roster || []).map(p => (
-                            <option key={p.id} value={p.id}>#{p.number} {p.name}</option>
-                        ))}
-                    </select>
+            {/* SELECTION GRIDS */}
+            <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
+                
+                {/* 1. OUT GRID (Red) */}
+                <div className="flex-1 flex flex-col">
+                    <label className="text-xs font-bold text-red-500 flex items-center gap-1 mb-2 bg-red-50 p-1 rounded">
+                        <ArrowDownCircle size={14}/> OUT (Leaving)
+                    </label>
+                    <div className="flex-1 overflow-y-auto grid grid-cols-2 gap-2 pr-1 content-start">
+                        {sortedRoster.map(p => {
+                            const isSelected = isThisTeamSelected && subData.outId === p.id;
+                            // Optional: Disable if selected in the IN column
+                            const isDisabled = isThisTeamSelected && subData.inId === p.id;
+                            
+                            return (
+                                <button
+                                    key={p.id}
+                                    disabled={isDisabled}
+                                    onClick={() => handleSub('outId', p.id)}
+                                    className={`p-2 rounded border flex flex-col items-center transition-all ${
+                                        isSelected 
+                                            ? 'bg-red-600 text-white border-red-700 shadow-md ring-2 ring-red-300' 
+                                            : isDisabled 
+                                                ? 'bg-slate-100 text-slate-300 opacity-50 cursor-not-allowed'
+                                                : 'bg-white hover:bg-red-50 hover:border-red-200'
+                                    }`}
+                                >
+                                    <span className="text-xl font-black">{p.number}</span>
+                                    <span className="text-[10px] font-bold uppercase truncate w-full text-center">{p.name.split(' ')[0]}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
-                <div className="flex-1">
-                    <label className="text-xs font-bold text-green-600 flex items-center gap-1 mb-1"><ArrowUpCircle size={12} /> IN (Substitute)</label>
-                    <select
-                        className="w-full p-2 border rounded font-bold"
-                        value={subData.teamId === team.id ? (subData.inId || '') : ''}
-                        onChange={(e) => handleSub('inId', e.target.value)}
-                    >
-                        <option value="">Select Player In...</option>
-                        {(team.roster || []).map(p => (
-                            <option key={p.id} value={p.id}>#{p.number} {p.name}</option>
-                        ))}
-                    </select>
+
+                {/* 2. IN GRID (Green) */}
+                <div className="flex-1 flex flex-col">
+                    <label className="text-xs font-bold text-green-600 flex items-center gap-1 mb-2 bg-green-50 p-1 rounded">
+                        <ArrowUpCircle size={14}/> IN (Entering)
+                    </label>
+                    <div className="flex-1 overflow-y-auto grid grid-cols-2 gap-2 pr-1 content-start">
+                        {sortedRoster.map(p => {
+                            const isSelected = isThisTeamSelected && subData.inId === p.id;
+                            const isDisabled = isThisTeamSelected && subData.outId === p.id;
+
+                            return (
+                                <button
+                                    key={p.id}
+                                    disabled={isDisabled}
+                                    onClick={() => handleSub('inId', p.id)}
+                                    className={`p-2 rounded border flex flex-col items-center transition-all ${
+                                        isSelected 
+                                            ? 'bg-green-600 text-white border-green-700 shadow-md ring-2 ring-green-300' 
+                                            : isDisabled 
+                                                ? 'bg-slate-100 text-slate-300 opacity-50 cursor-not-allowed'
+                                                : 'bg-white hover:bg-green-50 hover:border-green-200'
+                                    }`}
+                                >
+                                    <span className="text-xl font-black">{p.number}</span>
+                                    <span className="text-[10px] font-bold uppercase truncate w-full text-center">{p.name.split(' ')[0]}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
 
-            <div className="flex gap-2">
-                <button
+            {/* ACTION BUTTONS */}
+            <div className="mt-4 pt-4 border-t flex gap-2">
+                <button 
                     onClick={toggleGraphic}
-                    className={`flex-1 py-3 rounded font-bold text-white flex justify-center items-center gap-2 transition-all ${isActive ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700'}`}
+                    className={`flex-1 py-4 rounded-xl font-black text-white text-sm shadow-lg active:scale-95 transition-all flex flex-col items-center justify-center gap-1 ${isActive ? 'bg-slate-700 hover:bg-slate-800' : 'bg-blue-600 hover:bg-blue-700'}`}
                 >
-                    {isActive ? 'HIDE GRAPHIC' : 'SHOW GRAPHIC'}
+                    {isActive ? (
+                        <>
+                            <span className="flex items-center gap-2"><ArrowDownCircle size={16}/> HIDE GRAPHIC</span>
+                        </>
+                    ) : (
+                        <>
+                            <span className="flex items-center gap-2"><ArrowUpCircle size={16}/> PUSH TO SCREEN</span>
+                            <span className="text-[10px] opacity-70 font-normal">CLICK TO SHOW</span>
+                        </>
+                    )}
                 </button>
-                <button onClick={clearSub} className="px-4 bg-slate-200 rounded font-bold text-slate-600">Reset</button>
+                <button 
+                    onClick={clearSub} 
+                    className="w-16 bg-slate-200 rounded-xl font-bold text-slate-500 hover:bg-slate-300 hover:text-red-500 flex flex-col items-center justify-center text-[10px]"
+                >
+                    <Trash2 size={16} className="mb-1"/>
+                    CLR
+                </button>
             </div>
-
-            {isActive && <div className="mt-2 text-center text-xs font-bold text-green-600 animate-pulse">● Graphic is Live on Output</div>}
         </div>
     )
 }
