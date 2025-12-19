@@ -2040,12 +2040,22 @@ function BroadcastOverlay({ matchId }) {
 
 // ... (Rest of the file: LineupDisplay and StadiumView remain unchanged)
 // --- Lineup Display ---
-// --- FIXED Lineup Display (Optimized for Single Port 3001) ---
-// --- FIXED Lineup Display (Transparent WebM Support) ---
 function LineupDisplay({ team, ids, step }) {
     if (!team || !ids) return null;
 
-    // 1. VIDEO DETECTION
+    // 1. ROBUST URL RESOLVER
+    // Ensures paths like "uploads/video.webm" become "/uploads/video.webm"
+    const resolveUrl = (url) => {
+        if (!url) return "";
+        // If it's Base64 or absolute http, keep it
+        if (url.startsWith('data:') || url.startsWith('http')) return url;
+        // If it already has a leading slash, keep it
+        if (url.startsWith('/')) return url;
+        // Otherwise, assume it's relative to root
+        return `/${url}`;
+    };
+
+    // 2. VIDEO DETECTION
     const isVideo = (url) => {
         if (!url) return false;
         return url.match(/\.(mov|mp4|webm)$/i) || url.includes('/uploads/') || url.startsWith('data:video/');
@@ -2063,20 +2073,20 @@ function LineupDisplay({ team, ids, step }) {
 
     return (
         <div className="absolute inset-0 z-[100] overflow-hidden font-sans text-white pointer-events-none">
-            {/* Background Gradient - Only show on summary or transitions, KEEP CLEAR for alpha video */}
+            {/* Background Gradient - Hidden for Intro/Main, Visible for Summary */}
             <div className={`absolute inset-0 transition-opacity duration-1000 ${showSummary ? 'bg-slate-900/90' : 'bg-transparent'}`}></div>
 
             {/* Header */}
             <div className="absolute top-10 left-10 flex items-center gap-6 z-50 animate-in slide-in-from-top duration-700">
                 <div className="w-28 h-16 bg-white shadow-2xl relative overflow-hidden flex items-center justify-center border-2 border-white/20">
-                    {team.flag ? <img src={team.flag} className="w-full h-full object-cover" /> : <Flag className="text-slate-300" />}
+                    {team.flag ? <img src={resolveUrl(team.flag)} className="w-full h-full object-cover" /> : <Flag className="text-slate-300" />}
                 </div>
                 <h1 className="text-5xl font-black italic uppercase tracking-tighter leading-none drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] text-white">
                     STARTING LINEUP
                 </h1>
             </div>
 
-            {/* Team Name Background Text */}
+            {/* Background Text */}
             <div className="absolute left-10 top-28 z-40 pointer-events-none text-7xl font-black uppercase leading-none" style={{ color: team.color || 'white' }}>
                 {team.name.split('').map((char, i) => (
                     <span key={i} className="absolute inline-block drop-shadow-2xl transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
@@ -2098,32 +2108,35 @@ function LineupDisplay({ team, ids, step }) {
                     <div className="w-[40%] h-full relative">
                         <div key={featuredPlayer.id} className="absolute inset-0 animate-slide-in-left">
                             
-                            {/* Big Background Number */}
+                            {/* Big Number Background */}
                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[500px] font-black text-white/20 select-none leading-none z-0">
                                 {featuredPlayer.number}
                             </div>
                             
                             <div className="absolute bottom-60 left-52 z-20 flex flex-col items-center">
-                                {/* Video Container */}
                                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[700px] h-[900px] flex items-end justify-center -z-10">
                                     
-                                    {/* OPTIONAL: Floor Gradient (Light colored floor reflection) - Remove if blocking transparency */}
-                                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[380px] h-2/3 -z-20 opacity-60"
-                                        style={{ background: `radial-gradient(circle at bottom, ${team.color || '#ea580c'} 0%, transparent 70%)` }}
-                                    ></div>
+                                    {/* Floor Reflection - REMOVED temporarily in case it blocks transparency */}
+                                    {/* <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[380px] h-2/3 -z-20 opacity-60" style={{ background: ... }}></div> */}
 
+                                    {/* VIDEO RENDERER */}
                                     {isVideo(featuredPlayer.photo) ? (
                                         <video
-                                            src={featuredPlayer.photo}
+                                            src={resolveUrl(featuredPlayer.photo)}
                                             autoPlay muted loop playsInline
                                             className="h-full object-contain drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]"
-                                            // THIS IS THE FIX FOR TRANSPARENCY
                                             style={{ backgroundColor: 'transparent' }} 
-                                            onError={(e) => e.target.style.display = 'none'}
+                                            onError={(e) => {
+                                                console.error("Video Load Error:", e);
+                                                // If video fails, don't hide it immediately so we can see the broken icon
+                                                // e.target.style.display = 'none'; 
+                                            }}
                                         />
                                     ) : featuredPlayer.photo ? (
-                                        <img src={featuredPlayer.photo} className="h-full object-contain drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]" />
-                                    ) : <User className="h-1/2 w-1/2 text-white/10" />}
+                                        <img src={resolveUrl(featuredPlayer.photo)} className="h-full object-contain drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]" />
+                                    ) : (
+                                        <User className="h-1/2 w-1/2 text-white/10" />
+                                    )}
                                 </div>
 
                                 {/* Name Plate */}
@@ -2145,16 +2158,11 @@ function LineupDisplay({ team, ids, step }) {
                         {historyPlayers.map((p) => (
                             <div key={p.id} className="w-full bg-slate-900/80 backdrop-blur-md border-l-8 text-white p-4 flex items-center justify-between shadow-lg animate-scale-in" style={{ borderColor: team.color }}>
                                 <div className="flex items-center gap-6">
-                                    <div className="w-16 h-16 bg-slate-800/50 rounded-full overflow-hidden border-2 border-white/20 relative">
+                                    <div className="w-16 h-16 bg-slate-800 rounded-full overflow-hidden border-2 border-white/20 relative">
                                         {isVideo(p.photo) ? (
-                                            <video 
-                                                src={p.photo} 
-                                                className="w-full h-full object-cover" 
-                                                autoPlay muted loop playsInline 
-                                                style={{ backgroundColor: 'transparent' }} 
-                                            />
+                                            <video src={resolveUrl(p.photo)} className="w-full h-full object-cover" autoPlay muted loop playsInline style={{ backgroundColor: 'transparent' }} />
                                         ) : p.photo ? (
-                                            <img src={p.photo} className="w-full h-full object-cover" />
+                                            <img src={resolveUrl(p.photo)} className="w-full h-full object-cover" />
                                         ) : <User className="p-4" />}
                                     </div>
                                     <div>
@@ -2180,14 +2188,9 @@ function LineupDisplay({ team, ids, step }) {
                                         style={{ background: `radial-gradient(circle at bottom, ${team.color || '#ea580c'} 0%, transparent 70%)` }}
                                     ></div>
                                     {isVideo(p.photo) ? (
-                                        <video 
-                                            src={p.photo} 
-                                            autoPlay muted loop playsInline 
-                                            className="h-[95%] w-full object-contain object-bottom drop-shadow-lg"
-                                            style={{ backgroundColor: 'transparent' }}
-                                        />
+                                        <video src={resolveUrl(p.photo)} autoPlay muted loop playsInline className="h-[95%] w-full object-contain object-bottom drop-shadow-lg" style={{ backgroundColor: 'transparent' }}/>
                                     ) : p.photo ? (
-                                        <img src={p.photo} className="h-[95%] w-full object-contain object-bottom drop-shadow-lg" />
+                                        <img src={resolveUrl(p.photo)} className="h-[95%] w-full object-contain object-bottom drop-shadow-lg" />
                                     ) : <div className="h-full w-full flex items-center justify-center bg-white/5"><User className="h-20 w-20 text-white/20" /></div>}
                                 </div>
                                 <div className="absolute top-0 right-0 p-2 text-6xl font-black text-white/10 leading-none z-10">{p.number}</div>
