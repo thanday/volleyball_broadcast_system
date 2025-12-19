@@ -700,7 +700,71 @@ function RefereeManager({ onBack }) {
     )
 }
 
+// --- NEW: Chunked Upload Helper (Prevents Browser Crash) ---
+// --- FIXED: Chunked Upload Helper ---
+const uploadChunkedFile = (file, onProgress) => {
+    return new Promise((resolve, reject) => {
+        const serverUrl = window.localStorage.getItem('volleyball_server_url') || 'http://localhost:3001';
+        
+        if (!window.io) {
+            reject("Socket.io not loaded yet");
+            return;
+        }
+
+        const socket = window.io(serverUrl);
+        const CHUNK_SIZE = 1024 * 1024; // 1MB
+        let offset = 0;
+
+        socket.on('connect', () => {
+            // Start uploading first chunk
+            readAndSendChunk();
+        });
+
+        socket.on('chunk_received', (data) => {
+            // Update offset from server response
+            offset = data.offset;
+            const progress = Math.round((offset / file.size) * 100);
+            if (onProgress) onProgress(progress);
+
+            if (offset < file.size) {
+                // Send next chunk
+                readAndSendChunk();
+            } else {
+                // All chunks sent, tell server to finalize
+                socket.emit('upload_complete', { key: 'temp', fileName: file.name });
+            }
+        });
+
+        // --- THE FIX IS HERE: Wait for Server Confirmation ---
+        socket.on('upload_success', ({ url }) => {
+            socket.disconnect();
+            resolve(url); // This unlocks the button and returns the video URL
+        });
+
+        socket.on('upload_error', (err) => {
+            socket.disconnect();
+            reject(err.message);
+        });
+        
+        const readAndSendChunk = () => {
+            const reader = new FileReader();
+            const slice = file.slice(offset, offset + CHUNK_SIZE);
+
+            reader.onload = (e) => {
+                socket.emit('upload_chunk', {
+                    fileName: file.name,
+                    data: e.target.result,
+                    offset: offset
+                });
+            };
+
+            reader.readAsArrayBuffer(slice);
+        };
+    });
+};
+
 // --- Team Manager ---
+// --- Team Manager (Updated with Chunk Upload) ---
 function TeamManager({ onBack }) {
     const { teams, setTeams } = useVolleyballData();
     const [editingTeamId, setEditingTeamId] = useState(null);
@@ -709,10 +773,36 @@ function TeamManager({ onBack }) {
     const [isAddingPlayer, setIsAddingPlayer] = useState(false);
     const [editingPlayerId, setEditingPlayerId] = useState(null);
     const [playerForm, setPlayerForm] = useState({ name: '', number: '', position: '', photo: '' });
+    
+    // NEW: Upload State
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [isUploading, setIsUploading] = useState(false);
 
     const teamList = Array.isArray(teams) ? teams : [];
     const activeTeam = teamList.find(t => t.id === editingTeamId);
     const updateTeam = (id, f, v) => setTeams(teamList.map(t => t.id === id ? { ...t, [f]: v } : t));
+
+    // Handler for Video Uploads
+    const handleVideoUpload = async (file) => {
+        if (!file) return;
+        setIsUploading(true);
+        setUploadProgress(0);
+
+        try {
+            const fileUrl = await uploadChunkedFile(file, (progress) => {
+                setUploadProgress(progress);
+            });
+            // Update the form with the server URL (e.g. /uploads/video.webm)
+            setPlayerForm(prev => ({ ...prev, photo: fileUrl }));
+            alert("Video Upload Complete!");
+        } catch (error) {
+            console.error(error);
+            alert("Upload Failed");
+        } finally {
+            setIsUploading(false);
+            setUploadProgress(0);
+        }
+    };
 
     return (
         <div className="max-w-7xl mx-auto p-6 h-screen flex flex-col">
@@ -734,6 +824,7 @@ function TeamManager({ onBack }) {
                             </div>
                             <div>
                                 <div className="flex justify-between mb-4"><h3 className="font-bold flex gap-2"><LayoutGrid size={20} /> Roster</h3><button onClick={() => { setIsAddingPlayer(true); setEditingPlayerId(null); setPlayerForm({ name: '', number: '', position: '', photo: '' }); }} className="bg-slate-800 text-white px-3 py-1 rounded text-sm flex gap-2"><UserPlus size={16} /> Add</button></div>
+                                
                                 {isAddingPlayer && <div className="bg-slate-50 p-4 rounded border mb-4 grid grid-cols-12 gap-2 items-end">
                                     <div className="col-span-2"><label className="text-xs">No.</label><input value={playerForm.number} onChange={e => setPlayerForm({ ...playerForm, number: e.target.value })} className="w-full border p-1 rounded" /></div>
                                     <div className="col-span-4"><label className="text-xs">Name</label><input value={playerForm.name} onChange={e => setPlayerForm({ ...playerForm, name: e.target.value })} className="w-full border p-1 rounded" /></div>
@@ -751,20 +842,35 @@ function TeamManager({ onBack }) {
                                         </select>
                                     </div>
                                     <div className="col-span-12 grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-200">
+                                        {/* Image Upload (Existing) */}
                                         <div>
                                             <label className="text-xs font-bold block mb-1 flex items-center gap-1"><ImageIcon size={12} /> Image (Auto-Compress)</label>
                                             <input type="file" accept="image/*" className="text-[10px] w-full" onChange={e => processFile(e.target.files[0], u => setPlayerForm({ ...playerForm, photo: u }))} />
                                         </div>
+
+                                        {/* NEW: Chunked Video Upload */}
                                         <div>
                                             <label className="text-xs font-bold block mb-1 flex items-center gap-1 text-purple-600"><VideoIcon size={12} /> Video Upload (WebM/Mov)</label>
-                                            <input type="file" accept="video/*" className="text-[10px] w-full" onChange={e => processFile(e.target.files[0], u => setPlayerForm({ ...playerForm, photo: u }))} />
+                                            <input 
+                                                type="file" 
+                                                accept="video/*" 
+                                                className="text-[10px] w-full" 
+                                                disabled={isUploading}
+                                                onChange={e => handleVideoUpload(e.target.files[0])} 
+                                            />
+                                            {isUploading && (
+                                                <div className="w-full bg-slate-200 rounded-full h-2 mt-1">
+                                                    <div className="bg-purple-600 h-2 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
+                                                </div>
+                                            )}
                                         </div>
+
                                         <div className="col-span-2">
-                                            <label className="text-xs font-bold block mb-1 text-slate-400">OR Enter File Path</label>
-                                            <input placeholder="/videos/player.mov" value={playerForm.photo} onChange={e => setPlayerForm({ ...playerForm, photo: e.target.value })} className="w-full border p-1 rounded text-xs" />
+                                            <label className="text-xs font-bold block mb-1 text-slate-400">File Path (Result)</label>
+                                            <input placeholder="/uploads/video.webm" value={playerForm.photo} onChange={e => setPlayerForm({ ...playerForm, photo: e.target.value })} className="w-full border p-1 rounded text-xs" />
                                         </div>
                                     </div>
-                                    <button onClick={() => {
+                                    <button disabled={isUploading} onClick={() => {
                                         let newRoster = [...(activeTeam.roster || [])];
                                         if (editingPlayerId) {
                                             newRoster = newRoster.map(p => p.id === editingPlayerId ? { ...p, ...playerForm } : p);
@@ -775,10 +881,12 @@ function TeamManager({ onBack }) {
                                         setPlayerForm({ name: '', number: '', position: '', photo: '' });
                                         setIsAddingPlayer(false);
                                         setEditingPlayerId(null);
-                                    }} className="col-span-12 bg-blue-600 text-white p-2 rounded mt-2 font-bold">{editingPlayerId ? 'Update Player' : 'Save Player'}</button>
+                                    }} className="col-span-12 bg-blue-600 text-white p-2 rounded mt-2 font-bold disabled:bg-slate-400">
+                                        {isUploading ? 'Uploading...' : (editingPlayerId ? 'Update Player' : 'Save Player')}
+                                    </button>
                                     <button onClick={() => { setIsAddingPlayer(false); setEditingPlayerId(null); }} className="col-span-12 bg-slate-200 text-slate-600 p-2 rounded mt-2 font-bold text-xs">Cancel</button>
                                 </div>}
-                                <div className="grid grid-cols-3 gap-2">{(activeTeam.roster || []).map(p => <div key={p.id} className="border p-2 rounded flex items-center gap-2 relative group"><div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden">{p.photo ? (p.photo.match(/\.(mov|mp4|webm)$/i) || p.photo.startsWith('data:video') ? <div className="w-full h-full bg-black flex items-center justify-center text-[8px] text-white">VID</div> : <img src={p.photo} className="w-full h-full object-cover" />) : null}</div><div><div className="font-bold text-sm">#{p.number} {p.name}</div><div className="text-xs text-slate-500">{p.position}</div></div>
+                                <div className="grid grid-cols-3 gap-2">{(activeTeam.roster || []).map(p => <div key={p.id} className="border p-2 rounded flex items-center gap-2 relative group"><div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden">{p.photo ? (p.photo.match(/\.(mov|mp4|webm)$/i) || p.photo.startsWith('data:video') || p.photo.includes('/uploads/') ? <div className="w-full h-full bg-black flex items-center justify-center text-[8px] text-white">VID</div> : <img src={p.photo} className="w-full h-full object-cover" />) : null}</div><div><div className="font-bold text-sm">#{p.number} {p.name}</div><div className="text-xs text-slate-500">{p.position}</div></div>
                                     <div className="absolute top-1 right-1 hidden group-hover:flex gap-1">
                                         <button onClick={() => { setPlayerForm(p); setEditingPlayerId(p.id); setIsAddingPlayer(true); }} className="bg-white text-blue-500 rounded shadow-sm p-1 hover:bg-blue-50 border"><Edit size={12} /></button>
                                         <button onClick={() => updateTeam(activeTeam.id, 'roster', activeTeam.roster.filter(x => x.id !== p.id))} className="bg-white text-red-500 rounded shadow-sm p-1 hover:bg-red-50 border"><X size={12} /></button>
