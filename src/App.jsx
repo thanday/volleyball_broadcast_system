@@ -2040,139 +2040,118 @@ function BroadcastOverlay({ matchId }) {
 
 // ... (Rest of the file: LineupDisplay and StadiumView remain unchanged)
 // --- Lineup Display ---
+// --- FIXED Lineup Display (Optimized for Single Port 3001) ---
 function LineupDisplay({ team, ids, step }) {
     if (!team || !ids) return null;
 
-    // Lineup players
-    const lineup = (ids || []).map(id => team.roster?.find(p => p.id === id)).filter(Boolean);
+    // 1. ROBUST VIDEO DETECTION
+    // This ensures your new uploads are treated as videos, not images
+    const isVideo = (url) => {
+        if (!url) return false;
+        // Check for video extensions OR if it lives in the uploads folder OR is base64 video
+        return url.match(/\.(mov|mp4|webm)$/i) || url.includes('/uploads/') || url.startsWith('data:video/');
+    };
 
+    const lineup = (ids || []).map(id => team.roster?.find(p => p.id === id)).filter(Boolean);
     const showIntro = step === 0;
     const showSummary = step > lineup.length;
     const currentIdx = (step || 0) - 1;
 
     const featuredPlayer = (!showIntro && !showSummary && lineup[currentIdx]) ? lineup[currentIdx] : null;
-
     const historyPlayers = showSummary ? lineup : lineup.slice(0, currentIdx);
-
-    const isVideo = (url) => url && (url.match(/\.(mov|mp4|webm)$/i) || url.startsWith('data:video/'));
 
     const heroTextColor = getTextColor(team.color || '#333');
 
     return (
         <div className="absolute inset-0 z-[100] overflow-hidden font-sans text-white pointer-events-none">
-
             <div className={`absolute inset-0 transition-opacity duration-1000 ${showSummary ? 'bg-slate-900/90' : 'bg-gradient-to-r from-slate-900/80 via-transparent to-slate-900/80'}`}></div>
 
+            {/* Header / Title */}
             <div className="absolute top-10 left-10 flex items-center gap-6 z-50 animate-in slide-in-from-top duration-700">
                 <div className="w-28 h-16 bg-white shadow-2xl relative overflow-hidden flex items-center justify-center border-2 border-white/20">
                     {team.flag ? <img src={team.flag} className="w-full h-full object-cover" /> : <Flag className="text-slate-300" />}
                 </div>
-                {/* Title - "STARTING LINEUP"  */}
-                <div>
-                    <h1 className="text-5xl font-black italic uppercase tracking-tighter leading-none drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] text-white">
-                        STARTING LINEUP
-                    </h1>
-                </div>
+                <h1 className="text-5xl font-black italic uppercase tracking-tighter leading-none drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] text-white">
+                    STARTING LINEUP
+                </h1>
             </div>
 
+            {/* Background Name Text */}
             <div className="absolute left-10 top-28 z-40 pointer-events-none text-7xl font-black uppercase leading-none" style={{ color: team.color || 'white' }}>
                 {team.name.split('').map((char, i) => (
-                    <span
-                        key={i}
-                        className="absolute inline-block drop-shadow-2xl transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                    <span key={i} className="absolute inline-block drop-shadow-2xl transition-all duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
                         style={{
-
                             left: showSummary ? `${i * 0.85}em` : '0em',
                             top: showSummary ? '0em' : `${i * 0.9}em`,
-
                             transitionDelay: `${i * 50}ms`,
                             textShadow: '6px 6px 0px rgba(0,0,0,0.5)',
-
                             width: '1.1em',
                             textAlign: 'center'
                         }}
-                    >
-                        {char}
-                    </span>
+                    >{char}</span>
                 ))}
             </div>
 
-            {/* 3. TEAM INTRO (Step 0) */}
-            {showIntro && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                </div>
-            )}
-
-            {!showIntro && !showSummary && (
+            {/* --- MAIN PLAYER VIEW --- */}
+            {!showIntro && !showSummary && featuredPlayer && (
                 <div className="absolute inset-0 flex">
-
                     <div className="w-[40%] h-full relative">
-                        {featuredPlayer && (
-                            <div key={featuredPlayer.id} className="absolute inset-0 animate-slide-in-left">
-                                
-                                {/* Big Number - Background Decoration - Scaled Up */}
-                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[500px] font-black text-white/20 select-none leading-none z-0">
-                                    {featuredPlayer.number}
-                                </div>
-                                <div className="absolute bottom-60 left-52 z-20 flex flex-col items-center">
+                        <div key={featuredPlayer.id} className="absolute inset-0 animate-slide-in-left">
+                            {/* Big Number Background */}
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[500px] font-black text-white/20 select-none leading-none z-0">
+                                {featuredPlayer.number}
+                            </div>
+                            
+                            {/* Player Cutout / Video */}
+                            <div className="absolute bottom-60 left-52 z-20 flex flex-col items-center">
+                                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[700px] h-[900px] flex items-end justify-center -z-10">
+                                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[380px] h-2/3 -z-20 opacity-60"
+                                        style={{ background: `radial-gradient(circle at bottom, ${team.color || '#ea580c'} 0%, transparent 70%)` }}
+                                    ></div>
 
-                                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[700px] h-[900px] flex items-end justify-center -z-10">
-                                        
-                                        {/* UPDATED: Gradient Width adjusted to match Name Bar (approx 350px) */}
-                                        <div 
-                                            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[380px] h-2/3 -z-20 opacity-60"
-                                            style={{
-                                                background: `radial-gradient(circle at bottom, ${team.color || '#ea580c'} 0%, transparent 70%)`
+                                    {/* VIDEO RENDER LOGIC */}
+                                    {isVideo(featuredPlayer.photo) ? (
+                                        <video
+                                            src={featuredPlayer.photo}
+                                            autoPlay muted loop playsInline
+                                            className="h-full object-contain drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+                                            onError={(e) => { 
+                                                console.error("Video Error:", e); 
+                                                e.target.style.display = 'none'; // Hide if broken
                                             }}
-                                        ></div>
+                                        />
+                                    ) : featuredPlayer.photo ? (
+                                        <img src={featuredPlayer.photo} className="h-full object-contain drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]" />
+                                    ) : (
+                                        <User className="h-1/2 w-1/2 text-white/10" />
+                                    )}
+                                </div>
 
-                                        {isVideo(featuredPlayer.photo) ? (
-                                            <video
-                                                src={featuredPlayer.photo}
-                                                autoPlay
-                                                muted
-                                                playsInline
-                                                className="h-full object-contain drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]"
-                                            />
-                                        ) : featuredPlayer.photo ? (
-                                            <img src={featuredPlayer.photo} className="h-full object-contain drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]" />
-                                        ) : (
-                                            <User className="h-1/2 w-1/2 text-white/10" />
-                                        )}
-                                    </div>
-
-                                    {/* Name Bar */}
-                                    <div className="transform -skew-x-12 inline-block px-6 py-3 shadow-xl border-l-4 border-white/20 relative" style={{ backgroundColor: team.color || '#333', minWidth: '300px' }}>
-                                        
-                                        {/* Removed the front-facing gradient that was here */}
-
-                                        <div className="transform skew-x-12 text-center" style={{ color: heroTextColor }}>
-                                            <div className="font-bold uppercase tracking-widest text-xs mb-1 opacity-80">{featuredPlayer.position}</div>
-                                            <div className="flex items-end justify-center gap-3">
-                                                <span className="text-6xl font-black leading-none">#{featuredPlayer.number}</span>
-                                                <span className="text-4xl font-black uppercase italic leading-none whitespace-nowrap">{featuredPlayer.name}</span>
-                                            </div>
+                                {/* Name Plate */}
+                                <div className="transform -skew-x-12 inline-block px-6 py-3 shadow-xl border-l-4 border-white/20 relative" style={{ backgroundColor: team.color || '#333', minWidth: '300px' }}>
+                                    <div className="transform skew-x-12 text-center" style={{ color: heroTextColor }}>
+                                        <div className="font-bold uppercase tracking-widest text-xs mb-1 opacity-80">{featuredPlayer.position}</div>
+                                        <div className="flex items-end justify-center gap-3">
+                                            <span className="text-6xl font-black leading-none">#{featuredPlayer.number}</span>
+                                            <span className="text-4xl font-black uppercase italic leading-none whitespace-nowrap">{featuredPlayer.name}</span>
                                         </div>
                                     </div>
                                 </div>
-
                             </div>
-                        )}
+                        </div>
                     </div>
 
-                    {/* RIGHT SIDE: HISTORY LIST*/}
+                    {/* Right Side List */}
                     <div className="w-[60%] h-full relative flex flex-col justify-end pb-60 px-20 gap-4">
-                        {historyPlayers.map((p, i) => (
+                        {historyPlayers.map((p) => (
                             <div key={p.id} className="w-full bg-slate-900/80 backdrop-blur-md border-l-8 text-white p-4 flex items-center justify-between shadow-lg animate-scale-in" style={{ borderColor: team.color }}>
                                 <div className="flex items-center gap-6">
-                                    <div className="w-16 h-16 bg-slate-800 rounded-full overflow-hidden border-2 border-white/20">
+                                    <div className="w-16 h-16 bg-slate-800 rounded-full overflow-hidden border-2 border-white/20 relative">
                                         {isVideo(p.photo) ? (
                                             <video src={p.photo} className="w-full h-full object-cover" autoPlay muted loop playsInline />
                                         ) : p.photo ? (
                                             <img src={p.photo} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <User className="p-4" />
-                                        )}
+                                        ) : <User className="p-4" />}
                                     </div>
                                     <div>
                                         <div className="text-3xl font-black uppercase italic">{p.name}</div>
@@ -2186,58 +2165,28 @@ function LineupDisplay({ team, ids, step }) {
                 </div>
             )}
 
-            {/* 4. SUMMARY VIEW (Step 7+) - "All Players Card" */}
+            {/* --- SUMMARY GRID VIEW --- */}
             {showSummary && (
                 <div className="absolute inset-0 flex items-end justify-center px-10 pb-60 pt-64 animate-scale-in">
                     <div className="w-full h-full grid grid-cols-6 gap-4">
                         {historyPlayers.map((p) => (
                             <div key={p.id} className="relative bg-slate-900/80 rounded-lg overflow-hidden border border-white/10 shadow-2xl group flex flex-col h-full">
-
-                                {/* Player Image/Video Container - UPDATED to match Hero Style (Backlight + Cutout) */}
                                 <div className="absolute inset-0 z-0 flex items-end justify-center">
-                                    
-                                    {/* Backlight Gradient */}
-                                    <div 
-                                        className="absolute bottom-0 w-full h-3/4 opacity-60"
-                                        style={{
-                                            background: `radial-gradient(circle at bottom, ${team.color || '#ea580c'} 0%, transparent 70%)`
-                                        }}
+                                    <div className="absolute bottom-0 w-full h-3/4 opacity-60"
+                                        style={{ background: `radial-gradient(circle at bottom, ${team.color || '#ea580c'} 0%, transparent 70%)` }}
                                     ></div>
-
                                     {isVideo(p.photo) ? (
-                                        <video
-                                            src={p.photo}
-                                            autoPlay muted playsInline // Removed loop
-                                            className="h-[95%] w-full object-contain object-bottom drop-shadow-lg"
-                                        />
+                                        <video src={p.photo} autoPlay muted loop playsInline className="h-[95%] w-full object-contain object-bottom drop-shadow-lg" />
                                     ) : p.photo ? (
-                                        <img
-                                            src={p.photo}
-                                            className="h-[95%] w-full object-contain object-bottom drop-shadow-lg"
-                                        />
-                                    ) : (
-                                        <div className="h-full w-full flex items-center justify-center bg-white/5">
-                                            <User className="h-20 w-20 text-white/20" />
-                                        </div>
-                                    )}
+                                        <img src={p.photo} className="h-[95%] w-full object-contain object-bottom drop-shadow-lg" />
+                                    ) : <div className="h-full w-full flex items-center justify-center bg-white/5"><User className="h-20 w-20 text-white/20" /></div>}
                                 </div>
-
-                                {/* Background Number (Overlay) */}
-                                <div className="absolute top-0 right-0 p-2 text-6xl font-black text-white/10 leading-none z-10">
-                                    {p.number}
-                                </div>
-
-                                {/* Info Bar Overlay (Bottom) - UPDATED: Uses Team Color Gradient & Increased Height */}
-                                <div
-                                    className="absolute bottom-0 left-0 w-full p-4 pt-12 z-20"
-                                    style={{
-                                        background: `linear-gradient(to top, ${team.color || '#ea580c'} 0%, ${team.color || '#ea580c'}E6 70%, transparent 100%)`
-                                    }}
+                                <div className="absolute top-0 right-0 p-2 text-6xl font-black text-white/10 leading-none z-10">{p.number}</div>
+                                <div className="absolute bottom-0 left-0 w-full p-4 pt-12 z-20"
+                                    style={{ background: `linear-gradient(to top, ${team.color || '#ea580c'} 0%, ${team.color || '#ea580c'}E6 70%, transparent 100%)` }}
                                 >
                                     <div className="flex items-center gap-2 mb-1">
-                                        <div className="bg-black/50 text-white text-[10px] font-black px-1.5 py-0.5 rounded uppercase">
-                                            {p.position}
-                                        </div>
+                                        <div className="bg-black/50 text-white text-[10px] font-black px-1.5 py-0.5 rounded uppercase">{p.position}</div>
                                         <div className="text-white font-black text-xl">#{p.number}</div>
                                     </div>
                                     <div className="text-xl font-bold text-white uppercase leading-none truncate" style={{ color: heroTextColor }}>{p.name}</div>
@@ -2247,9 +2196,8 @@ function LineupDisplay({ team, ids, step }) {
                     </div>
                 </div>
             )}
-
         </div>
-    )
+    );
 }
 
 // --- Stadium / LED View ( 1:1 & 16:9) ---
