@@ -79,7 +79,6 @@ const GlobalStyles = () => (
   `}</style>
 );
 
-// --- Helper: Contrast Text Color ---
 const getTextColor = (hex) => {
     if (!hex) return '#ffffff';
     hex = hex.replace('#', '');
@@ -90,7 +89,6 @@ const getTextColor = (hex) => {
     return yiq >= 128 ? '#0f172a' : '#ffffff';
 };
 
-// --- Sync Hook (Socket.IO Only - Stabilized for Large Data) ---
 function useSyncedState(key, defaultValue) {
     const [value, setValue] = useState(defaultValue);
     const [status, setStatus] = useState('disconnected');
@@ -111,7 +109,6 @@ function useSyncedState(key, defaultValue) {
         return window.localStorage.getItem('volleyball_server_url') || 'http://localhost:3001';
     });
 
-    // Load Socket.IO Script Dynamically
     useEffect(() => {
         if (typeof window.io !== 'undefined') {
             setIsSocketLoaded(true);
@@ -133,7 +130,7 @@ function useSyncedState(key, defaultValue) {
                 socketRef.current = window.io(serverUrl, {
                     reconnectionAttempts: 20,
                     reconnectionDelay: 1000,
-                    transports: ['websocket'], // Force websocket
+                    transports: ['websocket'], 
                     upgrade: false,
                     timeout: 60000
                 });
@@ -154,7 +151,6 @@ function useSyncedState(key, defaultValue) {
             console.warn(`❌ Disconnected: ${key} (${reason})`);
             setStatus('disconnected');
             if (reason === "transport close" || reason === "ping timeout") {
-                // Usually means packet was too big
                 console.warn("⚠️ Connection dropped likely due to data size.");
             }
         };
@@ -187,23 +183,19 @@ function useSyncedState(key, defaultValue) {
 
     // Setter Function
     const setSharedValue = (newValue) => {
-        // 1. Optimistic Update
         setValue(newValue);
 
-        // 2. Set Grace Period
         ignoreRemoteRef.current = true;
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         timeoutRef.current = setTimeout(() => {
             ignoreRemoteRef.current = false;
         }, 2000);
 
-        // 3. Debounced Emit
         if (emitDebounceRef.current) clearTimeout(emitDebounceRef.current);
 
         emitDebounceRef.current = setTimeout(() => {
             if (socketRef.current && socketRef.current.connected) {
                 const payload = { key, value: newValue };
-                // Send data
                 socketRef.current.emit('update_data', payload);
             } else {
                 console.warn("Socket disconnected. Reconnecting...");
@@ -216,7 +208,7 @@ function useSyncedState(key, defaultValue) {
                     }
                 }, 1000);
             }
-        }, 200); // Increased debounce slightly
+        }, 200); 
     };
 
     return [value, setSharedValue, status];
@@ -226,7 +218,6 @@ function useSyncedState(key, defaultValue) {
 const processFile = (file, callback, maxWidth = 200) => {
     if (!file) return;
 
-    // Hard limit 100MB to prevent browser crash before sending
     if (file.size > 100 * 1024 * 1024) {
         alert("⚠️ File too large! Please use a file under 100MB.");
         return;
@@ -258,23 +249,17 @@ const processFile = (file, callback, maxWidth = 200) => {
 
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-            // Compress to 0.6 quality JPEG
             callback(canvas.toDataURL('image/jpeg', 0.6));
         };
     };
 };
 
-// --- DATA CONTEXT (GLOBAL STATE) ---
 const DataContext = React.createContext(null);
 
 function VolleyballDataProvider({ children }) {
-    // We instantiate the sync hooks HERE, at the top level
-    // This ensures data persists even when you switch views (Dashboard <-> TeamManager)
     const [matches, setMatches, matchStatus] = useSyncedState('volleyball_matches', []);
     const [teams, setTeams, teamStatus] = useSyncedState('volleyball_teams', []);
     const [referees, setReferees, refStatus] = useSyncedState('volleyball_referees', []);
-
-    // Helper to get overall connection status
     const status = (matchStatus === 'connected' || teamStatus === 'connected') ? 'connected' : 'disconnected';
 
     return (
@@ -289,7 +274,6 @@ function VolleyballDataProvider({ children }) {
     );
 }
 
-// Helper hook for children to use
 const useVolleyballData = () => {
     const context = useContext(DataContext);
     if (!context) {
@@ -335,7 +319,7 @@ export default function App() {
     );
 }
 
-// --- PUBLIC PORTAL (Redesigned Dashboard) ---
+// --- PUBLIC PORTAL ---
 function PublicPortal() {
     const { matches, teams } = useVolleyballData();
     const [showAllResults, setShowAllResults] = useState(false);
@@ -392,22 +376,12 @@ function PublicPortal() {
     };
 
     const standings = calculateStandings();
-
-    // Group Matches
     const todayStr = new Date().toISOString().split('T')[0];
-
-    // UPDATED: Explicitly look for 'Live' status
     const liveMatch = matchList.find(m => m.status === 'Live');
-
-    // UPDATED: Next match is the first Scheduled one, regardless of whether a Live match exists
     const nextMatch = matchList
         .filter(m => m.status === 'Scheduled')
         .sort((a, b) => new Date(a.date + 'T' + a.time) - new Date(b.date + 'T' + b.time))[0];
-
-    // UPDATED: Logic to decide what to show in Hero vs List
     const heroMatch = liveMatch || nextMatch;
-
-    // Filter out the hero match from the upcoming list so it doesn't show twice
     const todaysMatches = matchList.filter(m => m.date === todayStr && m.id !== heroMatch?.id && m.status === 'Scheduled').sort((a, b) => a.time.localeCompare(b.time));
     const upcomingMatches = matchList.filter(m => m.date > todayStr && m.status !== 'Finished' && m.id !== heroMatch?.id);
     const pastMatches = matchList.filter(m => m.status === 'Finished').sort((a, b) => new Date(b.date + 'T' + b.time) - new Date(a.date + 'T' + a.time));
@@ -700,8 +674,6 @@ function RefereeManager({ onBack }) {
     )
 }
 
-// --- NEW: Chunked Upload Helper (Prevents Browser Crash) ---
-// --- FIXED: Chunked Upload Helper ---
 const uploadChunkedFile = (file, onProgress) => {
     return new Promise((resolve, reject) => {
         const serverUrl = window.localStorage.getItem('volleyball_server_url') || 'http://localhost:3001';
@@ -712,33 +684,28 @@ const uploadChunkedFile = (file, onProgress) => {
         }
 
         const socket = window.io(serverUrl);
-        const CHUNK_SIZE = 1024 * 1024; // 1MB
+        const CHUNK_SIZE = 1024 * 1024; 
         let offset = 0;
 
         socket.on('connect', () => {
-            // Start uploading first chunk
             readAndSendChunk();
         });
 
         socket.on('chunk_received', (data) => {
-            // Update offset from server response
             offset = data.offset;
             const progress = Math.round((offset / file.size) * 100);
             if (onProgress) onProgress(progress);
 
             if (offset < file.size) {
-                // Send next chunk
                 readAndSendChunk();
             } else {
-                // All chunks sent, tell server to finalize
                 socket.emit('upload_complete', { key: 'temp', fileName: file.name });
             }
         });
 
-        // --- THE FIX IS HERE: Wait for Server Confirmation ---
         socket.on('upload_success', ({ url }) => {
             socket.disconnect();
-            resolve(url); // This unlocks the button and returns the video URL
+            resolve(url); 
         });
 
         socket.on('upload_error', (err) => {
@@ -764,7 +731,6 @@ const uploadChunkedFile = (file, onProgress) => {
 };
 
 // --- Team Manager ---
-// --- Team Manager (Updated with Chunk Upload) ---
 function TeamManager({ onBack }) {
     const { teams, setTeams } = useVolleyballData();
     const [editingTeamId, setEditingTeamId] = useState(null);
@@ -774,7 +740,6 @@ function TeamManager({ onBack }) {
     const [editingPlayerId, setEditingPlayerId] = useState(null);
     const [playerForm, setPlayerForm] = useState({ name: '', number: '', position: '', photo: '' });
 
-    // NEW: Upload State
     const [uploadProgress, setUploadProgress] = useState(0);
     const [isUploading, setIsUploading] = useState(false);
 
@@ -792,7 +757,6 @@ function TeamManager({ onBack }) {
             const fileUrl = await uploadChunkedFile(file, (progress) => {
                 setUploadProgress(progress);
             });
-            // Update the form with the server URL (e.g. /uploads/video.webm)
             setPlayerForm(prev => ({ ...prev, photo: fileUrl }));
             alert("Video Upload Complete!");
         } catch (error) {
@@ -842,13 +806,11 @@ function TeamManager({ onBack }) {
                                         </select>
                                     </div>
                                     <div className="col-span-12 grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-200">
-                                        {/* Image Upload (Existing) */}
                                         <div>
                                             <label className="text-xs font-bold block mb-1 flex items-center gap-1"><ImageIcon size={12} /> Image (Auto-Compress)</label>
                                             <input type="file" accept="image/*" className="text-[10px] w-full" onChange={e => processFile(e.target.files[0], u => setPlayerForm({ ...playerForm, photo: u }))} />
                                         </div>
 
-                                        {/* NEW: Chunked Video Upload */}
                                         <div>
                                             <label className="text-xs font-bold block mb-1 flex items-center gap-1 text-purple-600"><VideoIcon size={12} /> Video Upload (WebM/Mov)</label>
                                             <input
@@ -903,7 +865,6 @@ function TeamManager({ onBack }) {
 
 // --- Dashboard ---
 function Dashboard({ onControl, onOutput, onStadium, onManageTeams, onManageReferees }) {
-    // UPDATED: Destructure setTeams and setReferees to allow factory reset
     const { matches, setMatches, teams, setTeams, referees, setReferees, status } = useVolleyballData();
 
     const [isCreating, setIsCreating] = useState(false);
@@ -934,7 +895,6 @@ function Dashboard({ onControl, onOutput, onStadium, onManageTeams, onManageRefe
         }
 
         const newMatch = {
-            // UPDATED: Use more unique ID to prevent collisions
             id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
             leagueName: form.league,
             tournamentLogo: '',
@@ -954,7 +914,6 @@ function Dashboard({ onControl, onOutput, onStadium, onManageTeams, onManageRefe
             graphicsVisible: false,
             setsVisible: true,
             setHistory: [],
-            // UPDATED: Initialize lineups to prevent "uncontrolled input" errors
             lineupA: [],
             lineupB: [],
             lineupStep: 0,
@@ -965,7 +924,6 @@ function Dashboard({ onControl, onOutput, onStadium, onManageTeams, onManageRefe
             showBroadcastSponsors: false
         };
 
-        // UPDATED: Robust sorting to prevent invalid date errors
         const updatedList = [...matchList, newMatch].sort((a, b) => {
             const dateA = new Date(a.date || 0);
             const dateB = new Date(b.date || 0);
@@ -985,30 +943,25 @@ function Dashboard({ onControl, onOutput, onStadium, onManageTeams, onManageRefe
         }
     }
 
-    // NEW: Force Push function
     const forcePush = () => {
         if (confirm("FORCE PUSH: This will overwrite the Server's data with your current Local data. Use this if the server data is ghosting or out of sync.")) {
-            // Re-setting the current matches will trigger the emit in useSyncedState
             setMatches([...matchList]);
             alert("Force push initiated. Server should now match your view.");
             setShowSettings(false);
         }
     }
 
-    // UPDATED: Factory Reset now clears Server Data, not just local storage
+    // UPDATED: Factory Reset now clears Server Data
     const factoryReset = () => {
         if (confirm("FACTORY RESET WARNING: This will delete ALL Teams, Matches, Referees, and Settings from the SERVER DATABASE. The app will return to its initial state. Are you sure?")) {
-            // 1. Wipe Data on Server
             setMatches([]);
             setTeams([]);
             setReferees([]);
 
-            // 2. Clear Local Preferences
             window.localStorage.removeItem('volleyball_matches');
             window.localStorage.removeItem('volleyball_teams');
             window.localStorage.removeItem('volleyball_referees');
 
-            // 3. Reload
             setTimeout(() => {
                 alert("System Reset Complete.");
                 window.location.href = window.location.pathname;
@@ -1109,7 +1062,6 @@ function Dashboard({ onControl, onOutput, onStadium, onManageTeams, onManageRefe
                 <div className="bg-white p-6 rounded-xl shadow-lg border mb-8 animate-in slide-in-from-top-4">
                     <h2 className="text-xl font-bold mb-4">New Fixture</h2>
                     <form onSubmit={createMatch} className="space-y-4">
-                        {/* UPDATED GRID: Removed Logo column */}
                         <div className="grid grid-cols-3 gap-4">
                             <div><label className="text-xs font-bold">Date</label><input required type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="w-full border p-2 rounded" /></div>
                             <div><label className="text-xs font-bold">Time (24h)</label><input required type="time" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })} className="w-full border p-2 rounded" /></div>
@@ -1155,7 +1107,6 @@ function ControlPanel({ matchId, onBack }) {
     const { matches, setMatches, teams, referees, status } = useVolleyballData();
     const [tab, setTab] = useState('score');
 
-    // Link Generation Logic
     const serverUrl = window.localStorage.getItem('volleyball_server_url') || 'http://localhost:3001';
     const baseUrl = window.location.origin + window.location.pathname;
     const broadcastLink = `${baseUrl}?view=output&matchId=${matchId}&server=${encodeURIComponent(serverUrl)}`;
@@ -1188,7 +1139,6 @@ function ControlPanel({ matchId, onBack }) {
         setMatches(copy);
     };
 
-    // --- NEW: Toggle Match Status (Scheduled -> Live -> Finished) ---
     const cycleStatus = () => {
         const statuses = ['Scheduled', 'Live', 'Finished'];
         const currentIdx = statuses.indexOf(match.status || 'Scheduled');
@@ -1200,7 +1150,6 @@ function ControlPanel({ matchId, onBack }) {
         updateMatch({ status: newStatus });
     };
 
-    // --- NEW: Timeout Auto-Off Logic ---
     useEffect(() => {
         if (!match) return;
 
@@ -1218,9 +1167,6 @@ function ControlPanel({ matchId, onBack }) {
             // Check Team B
             if (match.teamB?.activeTimeout && match.teamB?.timeoutExpires && now > match.teamB.timeoutExpires) {
                 updates.teamB = { ...match.teamB, ...updates.teamB, activeTimeout: false, timeoutExpires: null };
-                // Note: if teamA also updated, we need to merge carefully, but usually only one timeout happens at a time.
-                // If both expire exactly same second, we might lose one update if not careful.
-                // Safer merge:
                 if (updates.teamA) {
                     updates.teamB = { ...match.teamB, activeTimeout: false, timeoutExpires: null };
                 } else {
@@ -1263,14 +1209,12 @@ function ControlPanel({ matchId, onBack }) {
         updateMatch(updates);
     };
 
-    // --- NEW: Handle Timeout (Adds 30s Timer) ---
     const handleTimeout = (teamField, delta) => {
         const teamData = match[teamField];
         const val = Math.max(0, (teamData.timeouts || 0) + delta);
 
         let updates = { timeouts: val };
 
-        // If adding a timeout, automatically trigger alert for 30 seconds
         if (delta > 0) {
             updates.activeTimeout = true;
             updates.timeoutExpires = Date.now() + 30000;
@@ -1524,15 +1468,12 @@ function ControlPanel({ matchId, onBack }) {
                             <div className="flex-1 flex gap-4 overflow-hidden">
                                 {[currentTeamA, currentTeamB].map((t, i) => {
                                     const list = i === 0 ? (match.lineupA || []) : (match.lineupB || []);
-                                    // FIX: Filter count to only show players currently in the roster (ignores deleted players)
                                     const validCount = list.filter(id => t.roster?.some(p => p.id === id)).length;
-
                                     return (
                                         <div key={i} className="flex-1 overflow-y-auto">
                                             <div className={`text-xs font-bold uppercase mb-2 ${i === 0 ? 'text-blue-600' : 'text-red-600'}`}>{t.name} ({validCount}/6)</div>
                                             <div className="space-y-1">{(t.roster || []).map(p => {
                                                 const field = i === 0 ? 'lineupA' : 'lineupB';
-                                                // UPDATED: Ensure checked is boolean to fix React warning
                                                 const checked = list.includes(p.id) || false;
                                                 return (
                                                     <label key={p.id} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded border cursor-pointer">
@@ -1686,7 +1627,7 @@ function BroadcastOverlay({ matchId }) {
             }, 5000); // Rotate every 5 seconds
             return () => clearInterval(interval);
         } else {
-            setSponsorIdx(0); // Reset index if not rotating or only 1
+            setSponsorIdx(0); 
         }
     }, [match?.broadcastSponsors, match?.showBroadcastSponsors]);
 
@@ -2120,9 +2061,7 @@ function BroadcastOverlay({ matchId }) {
     )
 }
 
-// ... (Rest of the file: LineupDisplay and StadiumView remain unchanged)
 // --- Lineup Display ---
-// --- FIXED Lineup Display (Play Once & Pause) ---
 function LineupDisplay({ team, ids, step }) {
     if (!team || !ids) return null;
 
@@ -2187,7 +2126,6 @@ function LineupDisplay({ team, ids, step }) {
                     <div className="w-[40%] h-full relative">
                         <div key={featuredPlayer.id} className="absolute inset-0 animate-slide-in-left">
 
-                            {/* Big Number Background */}
                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[500px] font-black text-white/20 select-none leading-none z-0">
                                 {featuredPlayer.number}
                             </div>
@@ -2202,7 +2140,6 @@ function LineupDisplay({ team, ids, step }) {
                                             autoPlay
                                             muted
                                             playsInline
-                                            // REMOVED 'loop' here
                                             className="h-full object-contain drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]"
                                             style={{ backgroundColor: 'transparent' }}
                                             onError={(e) => console.error("Video Error:", e)}
@@ -2240,7 +2177,6 @@ function LineupDisplay({ team, ids, step }) {
                                                 src={resolveUrl(p.photo)}
                                                 className="w-full h-full object-cover"
                                                 autoPlay muted playsInline
-                                                // REMOVED 'loop' here
                                                 style={{ backgroundColor: 'transparent' }}
                                             />
                                         ) : p.photo ? (
@@ -2274,7 +2210,6 @@ function LineupDisplay({ team, ids, step }) {
                                         <video
                                             src={resolveUrl(p.photo)}
                                             autoPlay muted playsInline
-                                            // REMOVED 'loop' here
                                             className="h-[95%] w-full object-contain object-bottom drop-shadow-lg"
                                             style={{ backgroundColor: 'transparent' }}
                                         />
@@ -2304,13 +2239,11 @@ function LineupDisplay({ team, ids, step }) {
 function SubController({ team, side, match, updateMatch }) {
     if (!team) return null;
 
-    // Helper to get safe sub data
     const subData = match.subData || { visible: false, teamId: null, inId: null, outId: null };
     const isActive = subData.visible && subData.teamId === team.id;
     const isThisTeamSelected = subData.teamId === team.id;
 
     const handleSub = (field, id) => {
-        // If we switch teams, reset the other data
         const base = isThisTeamSelected ? subData : { visible: false, teamId: team.id, inId: null, outId: null };
         const newData = { ...base, teamId: team.id, [field]: id };
         updateMatch({ subData: newData });
@@ -2328,7 +2261,6 @@ function SubController({ team, side, match, updateMatch }) {
         updateMatch({ subData: { visible: false, teamId: null, inId: null, outId: null } });
     };
 
-    // Sort roster by number for easier finding
     const sortedRoster = [...(team.roster || [])].sort((a, b) => parseInt(a.number) - parseInt(b.number));
 
     return (
@@ -2583,7 +2515,6 @@ function StadiumView({ matchId }) {
                             <div className="flex-1 bg-slate-900 rounded-xl border-l-8 border-t border-b border-r border-slate-700 flex flex-col items-center p-2 relative shadow-lg overflow-hidden" style={{ borderLeftColor: left.color }}>
                                 {renderSubOverlay(left)}
 
-                                {sL && <div className="absolute left-2 top-2 z-20"><img src="/img/volleyball.png" className="w-8 h-8 animate-pulse" /></div>}
 
                                 <div className="h-[30%] w-full flex justify-center mt-2">
                                     <div className="aspect-video h-full bg-black border border-slate-600 shadow relative">
@@ -2606,7 +2537,6 @@ function StadiumView({ matchId }) {
                             <div className="flex-1 bg-slate-900 rounded-xl border-l-8 border-t border-b border-r border-slate-700 flex flex-col items-center p-2 relative shadow-lg overflow-hidden" style={{ borderLeftColor: right.color }}>
                                 {renderSubOverlay(right)}
 
-                                {sR && <div className="absolute left-2 top-2 z-20"><img src="/img/volleyball.png" className="w-8 h-8 animate-pulse" /></div>}
 
                                 <div className="h-[30%] w-full flex justify-center mt-2">
                                     <div className="aspect-video h-full bg-black border border-slate-600 shadow relative">
