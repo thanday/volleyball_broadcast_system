@@ -224,7 +224,7 @@ export default function CavaClubOverlay({ matchId }) {
 }
 
 // ==========================================
-// SCOREBOARD (REVERTED: Top Border Removed)
+// SCOREBOARD 
 // ==========================================
 function ScoreboardSection({ match, left, right, viewState, resolveUrl }) {
   const isFullTime = match.activeView === "full_time";
@@ -271,7 +271,7 @@ function ScoreboardSection({ match, left, right, viewState, resolveUrl }) {
             )}
           </div>
 
-          {/* Name Bar - REVERTED to no top border */}
+          {/* Name Bar -*/}
           <div
             className={`h-full flex items-center overflow-hidden relative transition-all duration-1000 ${baseWidth}`}
             style={{
@@ -296,7 +296,7 @@ function ScoreboardSection({ match, left, right, viewState, resolveUrl }) {
                   className={`uppercase tracking-tight leading-none whitespace-nowrap truncate 
                                     ${
                                       isIntro
-                                        ? "text-5xl font-black"
+                                        ? "text-4xl font-black"
                                         : "text-6xl font-black"
                                     } 
                                     ${
@@ -421,7 +421,7 @@ function ScoreboardSection({ match, left, right, viewState, resolveUrl }) {
                   className={`uppercase tracking-tight leading-none whitespace-nowrap truncate 
                                     ${
                                       isIntro
-                                        ? "text-5xl font-black"
+                                        ? "text-4xl font-black"
                                         : "text-6xl font-black"
                                     } 
                                     ${

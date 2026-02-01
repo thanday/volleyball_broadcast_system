@@ -320,7 +320,7 @@
         "teamId": "1769003306775",
         "inId": "1769019551611",
         "outId": "1769019580402",
-        "visible": true
+        "visible": false
       },
       "lineupA": [
         "1769016062988",
@@ -331,7 +331,7 @@
         "1769019750814",
         "1769003922811"
       ],
-      "lineupStep": 0,
+      "lineupStep": 8,
       "ledAspectRatio": "1:1"
     }
   ],
